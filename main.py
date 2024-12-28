@@ -5,7 +5,7 @@ from .lib.database_connection import SessionLocal, engine
 from .lib.schemas import UserSchema, PostSchema, PostCommentSchema, UserPublic, PostPublic
 from .lib.models import PostLike, User, Post, PostComment, PostCategory
 from .src.repository.auth import create_user, authenticate_user, create_access_token, authorize
-from .src.repository.post_operations import create_post, get_post, get_all_posts, update_post, delete_post
+from .src.repository.post_operations import create_post, get_post, get_all_posts, update_post, delete_post, like_post_repo
 from typing import List, Optional, Annotated
 
 from sqlmodel import SQLModel
@@ -50,38 +50,6 @@ async def register(user: User, db: Session = Depends(get_db)):
 
 
 
-@app.post("/posts/{post_id}/like", response_model=PostLike, status_code=status.HTTP_201_CREATED)
-def like_post(post_id: int, user_id: int, current_user: Annotated[User, Depends(get_current_user)]):
-
-    print("\n\n\n in like post, current user is: ", current_user)
-
-    with Session(engine) as session:
-        post = session.get(Post, post_id)
-        if not post or not user:
-            raise HTTPException(status_code=404, detail="Post or User not found")
-
-        like = PostLike(post=post, user=user)
-        session.add(like)
-        session.commit()
-        session.refresh(like)
-        return like
-
-
-@app.post("/posts/{post_id}/comment/{user_id}", response_model=PostComment, status_code=status.HTTP_201_CREATED)
-def create_comment(post_id: int, user_id: int, comment_content: str):
-    with Session(engine) as session:
-        post = session.get(Post, post_id)
-        user = session.get(User, user_id)
-        if not post or not user:
-            raise HTTPException(status_code=404, detail="Post or User not found")
-
-        comment = PostComment(post=post, user=user, content=comment_content)
-        session.add(comment)
-        session.commit()
-        session.refresh(comment)
-        return comment
-
-
 # Endpoint for user login and token generation
 @app.post("/login", status_code=status.HTTP_200_OK)
 async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
@@ -104,6 +72,35 @@ async def create_new_post(post: PostPublic, current_user: UserPublic = Depends(g
         return newpost
     else:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+
+
+@app.post("/posts/{post_id}/like", response_model=PostLike, status_code=status.HTTP_201_CREATED)
+def like_post(post_id: str, current_user: UserPublic = Depends(get_current_user), db: Session = Depends(get_db)):
+
+    #print("\n\n\n in like post, current user is: ", current_user)
+
+    if current_user:
+        return like_post_repo(post_id, current_user, db)
+    else:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+        return;
+
+
+
+
+@app.post("/posts/{post_id}/comment/{user_id}", response_model=PostComment, status_code=status.HTTP_201_CREATED)
+def create_comment(post_id: int, user_id: int, comment_content: str, current_user: UserPublic = Depends(get_current_user)):
+    with Session(engine) as session:
+        post = session.get(Post, post_id)
+        user = session.get(User, user_id)
+        if not post or not user:
+            raise HTTPException(status_code=404, detail="Post or User not found")
+
+        comment = PostComment(post=post, user=user, content=comment_content)
+        session.add(comment)
+        session.commit()
+        session.refresh(comment)
+        return comment
 
 
 
@@ -298,7 +295,8 @@ async def toggle_post_like(
     return {"message": message}
 
 
-# 7. Like/Unlike comment
+
+# Endpoint to Like a comment
 @app.post("/comments/{comment_id}/like")
 async def toggle_comment_like(
     comment_id: int,
@@ -336,7 +334,8 @@ async def toggle_comment_like(
     db.commit()
     return {"message": message}
 
-# 8. Get user feed (paginated)
+
+# Endpoint to get user feed
 @app.get("/feed", response_model=List[PostPublic])
 async def get_feed(
     page: int = Query(1, gt=0),

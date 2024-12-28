@@ -1,7 +1,7 @@
 
 from sqlalchemy.orm import Session
-from ...lib.models import Post, User, MediaURL
-from ...lib.schemas import Post, PostPublic
+from ...lib.models import Post, User, MediaURL, PostLike
+from ...lib.schemas import Post, PostPublic, UserPublic
 from uuid import uuid4
 from datetime import datetime
 from typing import List
@@ -33,7 +33,6 @@ def create_post(db: Session, post: Post, author_user_id: int, author_username: s
         caption=post.caption,  # Assign caption from the request
         post_category=post.post_category,  # Assign post category from the request
         author_user_id=int(author_user_id),  # Set the author user ID
-        #datetime_posted=datetime.utcnow()
     )
     
     # Add the new post to the session and commit to the database
@@ -69,6 +68,24 @@ def get_post(db: Session, post_id: str) -> PostPublic:
         datetime_posted=post.datetime_posted.isoformat(),
         author_user_id=post.author_user_id,
     )
+
+
+def like_post_repo(post_id: str, liker: UserPublic, db: Session):
+    # like a post and return a PostLike
+
+    postLike = PostLike(post_id = post_id, liker_user_id = liker.user_id)
+
+    #print("\n\n\nformulated post liek: ", postLike)
+
+    db.add(postLike)
+    db.commit()
+    db.refresh(postLike)  # Refresh the instance to get the latest data from the database
+
+    #print("db ops done")
+
+    return postLike
+
+
 
 # Function to retrieve all posts
 def get_all_posts(db: Session) -> List[PostPublic]:

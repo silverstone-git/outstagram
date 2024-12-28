@@ -3,9 +3,18 @@
 A fastapi server for social media frontends to connect to
 
 
-## Installation and running
+## Installation
 
-Pip Packages needed
+Make a virtual environment with
+
+```bash
+
+python -m venv your_venv_name
+source ./your_venv_name/bin/activate
+
+```
+
+Pip Packages needed (Install using `pip install`)
 - fastapi[all]
 - passlib
 - python-jose

@@ -138,3 +138,206 @@ async def delete_existing_post(post_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Post not found")
     return {"detail": "Post deleted successfully"}
 
+
+
+# Endpoint to get a user (public)
+@router.get("/users/{username}", response_model=UserPublic)
+async def get_user_profile(
+    username: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    user = db.query(User).filter(User.username == username).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    posts_count = db.query(Post).filter(Post.author_user_id == user.user_id).count()
+    followers_count = db.query(FollowRequest).filter(
+        FollowRequest.requested_user_id == user.user_id,
+        FollowRequest.status == "accepted"
+    ).count()
+    following_count = db.query(FollowRequest).filter(
+        FollowRequest.requester_user_id == user.user_id,
+        FollowRequest.status == "accepted"
+    ).count()
+    
+    is_following = db.query(FollowRequest).filter(
+        FollowRequest.requester_user_id == current_user.user_id,
+        FollowRequest.requested_user_id == user.user_id,
+        FollowRequest.status == "accepted"
+    ).first() is not None
+    
+    return {
+        **user.dict(),
+        "posts_count": posts_count,
+        "followers_count": followers_count,
+        "following_count": following_count,
+        "is_following": is_following
+    }
+
+
+@router.post("/users/{username}/follow", status_code=status.HTTP_201_CREATED)
+async def follow_user(
+    username: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    target_user = db.query(User).filter(User.username == username).first()
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    if target_user.user_id == current_user.user_id:
+        raise HTTPException(status_code=400, detail="Cannot follow yourself")
+    
+    existing_request = db.query(FollowRequest).filter(
+        FollowRequest.requester_user_id == current_user.user_id,
+        FollowRequest.requested_user_id == target_user.user_id
+    ).first()
+    
+    if existing_request:
+        if existing_request.status == "accepted":
+            raise HTTPException(status_code=400, detail="Already following this user")
+        elif existing_request.status == "pending":
+            raise HTTPException(status_code=400, detail="Follow request already pending")
+    
+    follow_request = FollowRequest(
+        requester_user_id=current_user.user_id,
+        requested_user_id=target_user.user_id,
+        status="pending"
+    )
+    
+    db.add(follow_request)
+    db.commit()
+    
+    return {"message": "Follow request sent"}
+
+
+
+# Endpoint to Get user's posts
+@router.get("/users/{username}/posts", response_model=List[PostPublic])
+async def get_user_posts(
+    username: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if()
+    user = db.query(User).filter(User.username == username).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    posts = db.query(Post).filter(Post.author_user_id == user.user_id).all()
+    
+    # Add is_liked status for each post
+    for post in posts:
+        post.is_liked = db.query(PostLike).filter(
+            PostLike.post_id == post.post_id,
+            PostLike.liker_user_id == current_user.user_id
+        ).first() is not None
+    
+    return posts
+
+
+# Edpoint( protected) for liking post
+@router.post("/posts/{post_id}/like")
+async def toggle_post_like(
+    post_id: int,
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
+):
+    user = authorize(token)
+    if not user:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    post = db.query(Post).filter(Post.post_id == post_id).first()
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+    
+    existing_like = db.query(PostLike).filter(
+        PostLike.post_id == post_id,
+        PostLike.liker_user_id == current_user.user_id
+    ).first()
+    
+    if existing_like:
+        db.delete(existing_like)
+        message = "Post unliked successfully"
+    else:
+        like = PostLike(
+            post_id=post_id,
+            liker_user_id=current_user.user_id
+        )
+        db.add(like)
+        message = "Post liked successfully"
+    
+    db.commit()
+    return {"message": message}
+
+
+# 7. Like/Unlike comment
+@router.post("/comments/{comment_id}/like")
+async def toggle_comment_like(
+    comment_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    comment = db.query(PostComment).filter(PostComment.comment_id == comment_id).first()
+    if not comment:
+        raise HTTPException(status_code=404, detail="Comment not found")
+    
+    existing_like = db.query(PostCommentLike).filter(
+        PostCommentLike.comment_id == comment_id,
+        PostCommentLike.liker_user_id == current_user.user_id
+    ).first()
+    
+    if existing_like:
+        db.delete(existing_like)
+        message = "Comment unliked successfully"
+    else:
+        like = PostCommentLike(
+            comment_id=comment_id,
+            liker_user_id=current_user.user_id
+        )
+        db.add(like)
+        message = "Comment liked successfully"
+    
+    db.commit()
+    return {"message": message}
+
+# 8. Get user feed (paginated)
+@router.get("/feed", response_model=List[PostResponse])
+async def get_feed(
+    page: int = Query(1, gt=0),
+    limit: int = Query(10, gt=0, le=50),
+    category: Optional[PostCategory] = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # Get users that current user follows
+    following_ids = db.query(FollowRequest.requested_user_id).filter(
+        FollowRequest.requester_user_id == current_user.user_id,
+        FollowRequest.status == "accepted"
+    ).all()
+    following_ids = [id for (id,) in following_ids]
+    
+    # Base query
+    query = db.query(Post).filter(Post.author_user_id.in_(following_ids))
+    
+    # Apply category filter if provided
+    if category:
+        query = query.filter(Post.post_category == category)
+    
+    # Apply pagination and ordering
+    posts = query.order_by(
+        desc(Post.datetime_posted)
+    ).offset(
+        (page - 1) * limit
+    ).limit(limit).all()
+    
+    # Add is_liked status for each post
+    for post in posts:
+        post.is_liked = db.query(PostLike).filter(
+            PostLike.post_id == post.post_id,
+            PostLike.liker_user_id == current_user.user_id
+        ).first() is not None
+    
+    return posts
+

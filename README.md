@@ -123,10 +123,40 @@ curl -X POST "http://localhost:8000/posts/YOUR_POST_ID/like" \
 ```bash
 
 curl -X POST \
-  http://localhost:8000/posts/34a5166e-0959-43c7-a2cb-82c885a0928f/comment \
+  http://localhost:8000/posts/YOUR_POST_ID/comment \
   -H "Authorization: Bearer YOUR_BEARER_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "content": "YOUR_COMMENT"
   }'
+```
+
+- for getting the likes on a Post
+
+```bash
+
+curl http://localhost:8000/posts/YOUR_POST_ID/likes/PAGE_NUMBER \
+  -H "Authorization: Bearer YOUR_BEARER_TOKEN" \
+  -H "Content-Type: application/json"
+
+```
+
+- for getting the comments on a post
+
+```bash
+
+curl http://localhost:8000/posts/YOUR_POST_ID/comments/PAGE_NUMBER \
+  -H "Authorization: Bearer YOUR_BEARER_TOKEN" \
+  -H "Content-Type: application/json"
+
+```
+
+- for getting a post
+
+```bash
+
+curl http://localhost:8000/posts/YOUR_POST_ID \
+  -H "Authorization: Bearer YOUR_BEARER_TOKEN" \
+  -H "Content-Type: application/json"
+
 ```

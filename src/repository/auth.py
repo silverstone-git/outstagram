@@ -2,8 +2,8 @@ from sqlalchemy.orm import Session
 from passlib.context import CryptContext
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
-from ../../lib/models import User
-from ../../lib/schemas import UserCreate, UserPublic
+from ...lib.models import User
+from ...lib.schemas import User, UserPublic
 from typing import Optional
 from os import getenv
 
@@ -24,7 +24,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
 
-def authorize(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> UserPublic:
+def authorize(token: str, db: Session) -> UserPublic:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -54,7 +54,7 @@ def authorize(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)
 
 
 # Function to create a new user
-def create_user(db: Session, user: UserCreate) -> UserPublic:
+def create_user(db: Session, user: User) -> UserPublic:
     # Check if the username already exists
     existing_user = db.query(User).filter(User.username == user.username).first()
     if existing_user:

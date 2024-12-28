@@ -1,8 +1,9 @@
-from datetime import datetime
+from datetime import date, datetime
 
-from typing import Annotated
+from enum import Enum
+from typing import Annotated, List, Optional
 from fastapi import Depends, FastAPI, HTTPException, Query
-from sqlmodel import Field, Session, Relationship, SQLModel, create_engine, select, Enum
+from sqlmodel import Field, Session, Relationship, SQLModel, create_engine, select
 
 
 class User(SQLModel, table=True):
@@ -17,11 +18,11 @@ class User(SQLModel, table=True):
     comment_likes: List["PostCommentLike"] = Relationship(back_populates="liker")
     follow_requests_sent: List["FollowRequest"] = Relationship(back_populates="requester")
     follow_requests_received: List["FollowRequest"] = Relationship(back_populates="requested")
-    friendships1: List["Friendship"] = Relationship(back_populates="user1", foreign_key="Friendship.user1_id")
-    friendships2: List["Friendship"] = Relationship(back_populates="user2", foreign_key="Friendship.user2_id")
+    friendships1: List["Friendship"] = Relationship(back_populates="user1")
+    friendships2: List["Friendship"] = Relationship(back_populates="user2")
 
 
-class PostCategory(Enum):
+class PostCategory(str, Enum):
     tech = "tech"
     entertainment = "entertainment"
     business = "business"
@@ -71,7 +72,7 @@ class PostCommentLike(SQLModel, table=True):
     liker: User = Relationship(back_populates="comment_likes")
     datetime_liked: datetime = Field(default_factory=datetime.utcnow)
 
-class FollowRequestStatus(Enum):
+class FollowRequestStatus(str, Enum):
     pending = "pending"
     accepted = "accepted"
     rejected = "rejected"
@@ -88,8 +89,8 @@ class FollowRequest(SQLModel, table=True):
 class Friendship(SQLModel, table=True):
     friendship_id: Optional[int] = Field(default=None, primary_key=True)
     user1_id: int = Field(foreign_key="user.user_id")
-    user1: User = Relationship(back_populates="friendships1", foreign_key="Friendship.user1_id")
+    user1: User = Relationship(back_populates="friendships1")
     user2_id: int = Field(foreign_key="user.user_id")
-    user2: User = Relationship(back_populates="friendships2", foreign_key="Friendship.user2_id")
+    user2: User = Relationship(back_populates="friendships2")
     datetime_friended: datetime = Field(default_factory=datetime.utcnow)
 

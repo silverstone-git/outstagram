@@ -1,13 +1,14 @@
 
 from sqlalchemy.orm import Session
-from ../../lib/models import Post, User
-from ../../lib/schemas import PostCreate, PostPublic
+from ...lib.models import Post, User
+from ...lib.schemas import Post, PostPublic
 from uuid import uuid4
 from datetime import datetime
+from typing import List
 
 
 # Function to create a new post
-def create_post(db: Session, post: PostCreate, author_user_id: str) -> PostPublic:
+def create_post(db: Session, post: Post, author_user_id: str) -> PostPublic:
     # Create a new Post instance
     new_post = Post(
         post_id=str(uuid4()),  # Generate a new unique post ID
@@ -63,7 +64,7 @@ def get_all_posts(db: Session) -> List[PostPublic]:
     ]
 
 # Function to update a post
-def update_post(db: Session, post_id: str, updated_data: PostCreate) -> PostPublic:
+def update_post(db: Session, post_id: str, updated_data: Post) -> PostPublic:
     post = db.query(Post).filter(Post.post_id == post_id).first()
     if post is None:
         return None  # Return None if the post is not found

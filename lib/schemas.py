@@ -1,4 +1,5 @@
 
+from datetime import date, datetime
 from typing import List, Optional
 
 from pydantic import BaseModel
@@ -21,6 +22,20 @@ class MediaURLSchema(BaseModel):
     url: str
 
 
+class PostLikeSchema(BaseModel):
+    post_id: int
+    liker: UserSchema
+    datetime_liked: datetime
+
+
+class PostCommentSchema(BaseModel):
+    comment_id: Optional[int]
+    content: str
+    author: UserSchema
+    datetime_commented: datetime
+    likes: Optional[List[PostLikeSchema]]
+
+
 class PostSchema(BaseModel):
     post_id: Optional[int]
     media_urls: Optional[List[MediaURLSchema]]
@@ -33,18 +48,21 @@ class PostSchema(BaseModel):
     likes: Optional[List[PostLikeSchema]]
 
 
-class PostCommentSchema(BaseModel):
-    comment_id: Optional[int]
-    content: str
-    author: UserSchema
-    datetime_commented: datetime
-    likes: Optional[List[PostLikeSchema]]
+class PostPublic(BaseModel):
+    post_id: int # No optional here since it will always be there
+    caption: Optional[str]
+    post_category: PostCategory
+    datetime_posted: datetime
+    author: UserSchema # Assuming you have a UserSchema
+    highlighted_by_author: bool
+    media_urls: Optional[List[MediaURLSchema]]
 
 
-class PostLikeSchema(BaseModel):
-    post_id: int
-    liker: UserSchema
-    datetime_liked: datetime
+class UserPublic(BaseModel):
+    user_id: int
+    username: str
+    fullname: str
+    bio: Optional[str]
 
 
 class FollowRequestSchema(BaseModel):

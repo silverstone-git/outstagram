@@ -7,6 +7,8 @@ from .lib.models import PostLike, User, Post, PostComment, PostCategory
 from .src.repository.auth import create_user, authenticate_user, create_access_token, authorize
 from .src.repository.posts import create_post, get_post, get_all_posts, update_post, delete_post, like_post_repo, get_likes
 from .src.repository.comments import add_comment_repo, get_comments
+from .src.repository.user import get_dashboard
+from .src.repository.frienship import send_follow_request, request_approve_repo, get_follow_requests
 from typing import List, Optional, Annotated
 
 from sqlmodel import SQLModel
@@ -102,12 +104,10 @@ async def read_post(post_id: str, db: Session = Depends(get_db)):
     return get_post(post_id=post_id, db=db)
 
 
-
-# Endpoint to get all posts of followed users, paginated reverse chronological, friends first
-@app.get("/posts", response_model=List[PostPublic])
-async def read_all_posts(db: Session = Depends(get_db)):
-    return get_all_posts(db=db)
-
+# Endpoint to see all the logged in user's posts, along with user data
+@app.get("/dashboard")
+async def dashboard(current_user: UserPublic = Depends(get_current_user), db: Session = Depends(get_db)):
+    return get_dashboard(current_user, db=db)
 
 
 # Endpoint to update a post
@@ -164,48 +164,33 @@ async def get_user_profile(
     }
 
 
-@app.post("/users/{username}/follow", status_code=status.HTTP_201_CREATED)
+@app.get("/follow-requests")
 async def follow_user(
-    username: str,
-    token: str = Depends(oauth2_scheme),
+    current_user: UserPublic = Depends(get_current_user), 
     db: Session = Depends(get_db)
 ):
 
-    user = authorize(token, db)
+    return get_follow_requests(current_user, db)
 
-    if not user :
-        raise HTTPException(status_code=403, detail="Forbidden")
-        return;
 
-    target_user = db.query(User).filter(User.username == username).first()
-    if not target_user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    if target_user.user_id == current_user.user_id:
-        raise HTTPException(status_code=400, detail="Cannot follow yourself")
-    
-    existing_request = db.query(FollowRequest).filter(
-        FollowRequest.requester_user_id == current_user.user_id,
-        FollowRequest.requested_user_id == target_user.user_id
-    ).first()
-    
-    if existing_request:
-        if existing_request.status == "accepted":
-            raise HTTPException(status_code=400, detail="Already following this user")
-        elif existing_request.status == "pending":
-            raise HTTPException(status_code=400, detail="Follow request already pending")
-    
-    follow_request = FollowRequest(
-        requester_user_id=current_user.user_id,
-        requested_user_id=target_user.user_id,
-        status="pending"
-    )
-    
-    db.add(follow_request)
-    db.commit()
-    
-    return {"message": "Follow request sent"}
+@app.post("/users/{username}/follow", status_code=status.HTTP_201_CREATED)
+async def follow_user(
+    username: str,
+    current_user: UserPublic = Depends(get_current_user), 
+    db: Session = Depends(get_db)
+):
 
+    return send_follow_request(username, current_user, db)
+
+
+@app.get("/request-approve/{request_id}")
+async def request_approve(
+    request_id: str,
+    current_user: UserPublic = Depends(get_current_user), 
+    db: Session = Depends(get_db)
+):
+
+    return request_approve_repo(request_id, current_user, db)
 
 
 # Endpoint to Get user's posts
@@ -231,82 +216,10 @@ async def get_user_posts(
     return posts
 
 
-# Edpoint( protected) for liking post
-@app.post("/posts/{post_id}/like")
-async def toggle_post_like(
-    post_id: int,
-    token: str = Depends(oauth2_scheme),
-    db: Session = Depends(get_db)
-):
-    user = authorize(token)
-    if not user:
-        raise HTTPException(status_code=403, detail="Forbidden")
-
-    post = db.query(Post).filter(Post.post_id == post_id).first()
-    if not post:
-        raise HTTPException(status_code=404, detail="Post not found")
-    
-    existing_like = db.query(PostLike).filter(
-        PostLike.post_id == post_id,
-        PostLike.liker_user_id == current_user.user_id
-    ).first()
-    
-    if existing_like:
-        db.delete(existing_like)
-        message = "Post unliked successfully"
-    else:
-        like = PostLike(
-            post_id=post_id,
-            liker_user_id=current_user.user_id
-        )
-        db.add(like)
-        message = "Post liked successfully"
-    
-    db.commit()
-    return {"message": message}
 
 
 
-# Endpoint to Like a comment
-@app.post("/comments/{comment_id}/like")
-async def toggle_comment_like(
-    comment_id: int,
-    token: str = Depends(oauth2_scheme),
-    db: Session = Depends(get_db)
-):
-
-    
-    user = authorize(token, db)
-
-    if not user :
-        raise HTTPException(status_code=403, detail="Forbidden")
-        return;
-
-    comment = db.query(PostComment).filter(PostComment.comment_id == comment_id).first()
-    if not comment:
-        raise HTTPException(status_code=404, detail="Comment not found")
-    
-    existing_like = db.query(PostCommentLike).filter(
-        PostCommentLike.comment_id == comment_id,
-        PostCommentLike.liker_user_id == current_user.user_id
-    ).first()
-    
-    if existing_like:
-        db.delete(existing_like)
-        message = "Comment unliked successfully"
-    else:
-        like = PostCommentLike(
-            comment_id=comment_id,
-            liker_user_id=current_user.user_id
-        )
-        db.add(like)
-        message = "Comment liked successfully"
-    
-    db.commit()
-    return {"message": message}
-
-
-# Endpoint to get user feed
+# Endpoint to get all posts of followed users, paginated reverse chronological, friends first
 @app.get("/feed", response_model=List[PostPublic])
 async def get_feed(
     page: int = Query(1, gt=0),

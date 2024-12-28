@@ -25,3 +25,8 @@ class CouldntGetComments(HTTPException):
 class PostNotFound(HTTPException):
     def __init__(self, detail: str = "We couldnt find the post you have requested"):
         super().__init__(status_code=status.HTTP_404_NOT_FOUND, detail=detail)
+        
+
+class CouldntGetDashboard(HTTPException):
+    def __init__(self, detail: str = "We couldnt get the posts for this user"):
+        super().__init__(status_code=status.HTTP_400_BAD_REQUEST, detail=detail)

@@ -103,9 +103,10 @@ def like_post_repo(post_id: str, liker: UserPublic, db: Session):
         db.commit()
         db.refresh(postLike)  # Refresh the instance to get the latest data from the database
     except IntegrityError:
-        raise AlreadyLiked
-
-    #print("db ops done")
+        # unlike instead of give an error
+        db.delete(postLike)
+        db.commit()
+        print("\n\nUnliked\n\n")
 
     return postLike
 

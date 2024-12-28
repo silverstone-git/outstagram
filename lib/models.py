@@ -110,6 +110,7 @@ class FollowRequest(SQLModel, table=True):
     status: FollowRequestStatus = Field(default="pending")
 
 class Friendship(SQLModel, table=True):
+    # should also contain information about 1to2, 2to1, or both-ways
     friendship_id: Optional[int] = Field(default=None, primary_key=True)
     user1_id: int = Field(foreign_key="user.user_id")
     user1: User = Relationship(

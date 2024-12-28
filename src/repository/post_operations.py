@@ -1,36 +1,58 @@
 
 from sqlalchemy.orm import Session
-from ...lib.models import Post, User
+from ...lib.models import Post, User, MediaURL
 from ...lib.schemas import Post, PostPublic
 from uuid import uuid4
 from datetime import datetime
 from typing import List
+from uuid import uuid4
 
 
 # Function to create a new post
-def create_post(db: Session, post: Post, author_user_id: str) -> PostPublic:
+def create_post(db: Session, post: Post, author_user_id: int, author_username: str) -> PostPublic:
+
+    post_id_formulated = uuid4()
+
+    """
+    print("\n\n\npost is: : ")
+    print(post)
+    print(post.caption, type(post.caption))
+    print(post.post_category, type(post.post_category))
+    print(author_user_id, type(author_user_id))
+    """
+
+    media_url_objects = []
+    for media_url in post.media_urls:
+        media_url_object = MediaURL(post_id = post_id_formulated, url = media_url)
+        media_url_objects.append(media_url_object)
+        db.add(media_url_object)
+
     # Create a new Post instance
     new_post = Post(
-        #post_id=str(uuid4()),   Generate a new unique post ID
-        media_urls=post.media_urls,  # Assign media URLs from the request
+        post_id=post_id_formulated,
         caption=post.caption,  # Assign caption from the request
         post_category=post.post_category,  # Assign post category from the request
-        author_user_id=author_user_id,  # Set the author user ID
-        datetime_posted=datetime.utcnow()  # Set the current timestamp
+        author_user_id=int(author_user_id),  # Set the author user ID
+        #datetime_posted=datetime.utcnow()
     )
     
     # Add the new post to the session and commit to the database
     db.add(new_post)
     db.commit()
     db.refresh(new_post)  # Refresh the instance to get the latest data from the database
+
+    #print("\n\n\ndb operations done\n\n\n")
     
     return PostPublic(
-        #post_id=new_post.post_id,
-        media_urls=new_post.media_urls,
+        post_id=new_post.post_id,
         caption=new_post.caption,
         post_category=new_post.post_category,
         datetime_posted=new_post.datetime_posted.isoformat(),
-        author_user_id=new_post.author_user_id
+        author_user_id=new_post.author_user_id,
+        author = author_username,
+        highlighted_by_author = new_post.highlighted_by_author,
+        media_urls = post.media_urls
+
     )
 
 # Function to retrieve a post by its ID
@@ -45,7 +67,7 @@ def get_post(db: Session, post_id: str) -> PostPublic:
         caption=post.caption,
         post_category=post.post_category,
         datetime_posted=post.datetime_posted.isoformat(),
-        author_user_id=post.author_user_id
+        author_user_id=post.author_user_id,
     )
 
 # Function to retrieve all posts

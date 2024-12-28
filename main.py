@@ -4,9 +4,9 @@ from sqlalchemy.orm import Session
 from .lib.database_connection import SessionLocal, engine
 from .lib.schemas import UserSchema, PostSchema, PostCommentSchema, UserPublic, PostPublic
 from .lib.models import PostLike, User, Post, PostComment, PostCategory
-from .src.repository.auth import create_user, authenticate_user, create_access_token
+from .src.repository.auth import create_user, authenticate_user, create_access_token, authorize
 from .src.repository.post_operations import create_post, get_post, get_all_posts, update_post, delete_post
-from typing import List, Optional
+from typing import List, Optional, Annotated
 
 from sqlmodel import SQLModel
 
@@ -27,17 +27,36 @@ def get_db():
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
 
+async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)], db: Session = Depends(get_db)) -> UserPublic | None:
+
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+    user = authorize(token, db, credentials_exception)
+
+    if user is None:
+        raise credentials_exception
+    #print("\n \t ...returning ... \n")
+    return user
+
+
+
 @app.post("/register", response_model=UserPublic, status_code=status.HTTP_201_CREATED)
 async def register(user: User, db: Session = Depends(get_db)):
     return create_user(db=db, user=user)
 
 
 
-@app.post("/posts/{post_id}/like/{user_id}", response_model=PostLike, status_code=status.HTTP_201_CREATED)
-def like_post(post_id: int, user_id: int):
+@app.post("/posts/{post_id}/like", response_model=PostLike, status_code=status.HTTP_201_CREATED)
+def like_post(post_id: int, user_id: int, current_user: Annotated[User, Depends(get_current_user)]):
+
+    print("\n\n\n in like post, current user is: ", current_user)
+
     with Session(engine) as session:
         post = session.get(Post, post_id)
-        user = session.get(User, user_id)
         if not post or not user:
             raise HTTPException(status_code=404, detail="Post or User not found")
 
@@ -76,18 +95,20 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
 
 # Endpoint to create a new post
 @app.post("/posts", response_model=PostPublic)
-async def create_new_post(post: Post, token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
-    
-    user = authorize(token, db)
-    if user:
-        return create_post(db=db, post=post, author_user_id=user.user_id)
+async def create_new_post(post: PostPublic, current_user: UserPublic = Depends(get_current_user), db: Session = Depends(get_db)):
+
+    if current_user:
+        newpost = create_post(db=db, post=post, author_user_id=int(current_user.user_id), author_username = post.author)
+        print("\n\n\nnewpost result: ")
+        print(newpost)
+        return newpost
     else:
-        raise HTTPException(status_code=403, detail="Forbidden")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
 
 
 @app.get("/posts/{post_id}/likes", response_model=list[PostLike])
-def get_post_likes(post_id: int):
+def get_post_likes(post_id: int, current_user: Annotated[User, Depends(get_current_user)]):
     with Session(engine) as session:
         post = session.get(Post, post_id)
         if not post:
@@ -96,7 +117,7 @@ def get_post_likes(post_id: int):
 
 
 @app.get("/posts/{post_id}/comments", response_model=list[PostComment])
-def get_post_comments(post_id: int):
+def get_post_comments(post_id: int, current_user: Annotated[User, Depends(get_current_user)]):
     with Session(engine) as session:
         post = session.get(Post, post_id)
         if not post:

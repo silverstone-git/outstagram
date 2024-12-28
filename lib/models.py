@@ -46,27 +46,28 @@ class PostCategory(str, Enum):
     lifestyle = "lifestyle"
 
 class Post(SQLModel, table=True):
-    post_id: Optional[int] = Field(default=None, primary_key=True)
-    media_url_id: Optional[int] = Field(default=None)
-    media_urls: List["MediaURL"] = Relationship(back_populates="post")
+    post_id: str = Field(default=None, primary_key=True)
     caption: Optional[str] = None
     post_category: PostCategory = Field(nullable=False)
     datetime_posted: datetime = Field(default_factory=datetime.utcnow)
     author_user_id: Optional[int] = Field(default=None, foreign_key="user.user_id")
     author: User = Relationship(back_populates="posts")
     highlighted_by_author: bool = Field(default=False)
+
     comments: List["PostComment"] = Relationship(back_populates="post")
     likes: List["PostLike"] = Relationship(back_populates="post")
+    media_urls: List["MediaURL"] = Relationship(back_populates="post")
 
 class MediaURL(SQLModel, table=True):
-    media_url_id: Optional[int] = Field(default=None, primary_key=True)
-    post_id: Optional[int] = Field(default=None, foreign_key="post.post_id")
+
+    post_id: Optional[str] = Field(default=None, foreign_key="post.post_id", primary_key = True)
+    url: str = Field(nullable=False, primary_key = True)
+
     post: Post = Relationship(back_populates="media_urls")
-    url: str = Field(nullable=False)
 
 class PostComment(SQLModel, table=True):
     comment_id: Optional[int] = Field(default=None, primary_key=True)
-    post_id: Optional[int] = Field(default=None, foreign_key="post.post_id")
+    post_id: Optional[str] = Field(default=None, foreign_key="post.post_id")
     post: Post = Relationship(back_populates="comments")
     content: str = Field(nullable=False)
     author_user_id: Optional[int] = Field(default=None, foreign_key="user.user_id")
@@ -75,7 +76,7 @@ class PostComment(SQLModel, table=True):
     likes: List["PostCommentLike"] = Relationship(back_populates="comment")
 
 class PostLike(SQLModel, table=True):
-    post_id: int = Field(foreign_key="post.post_id", primary_key=True)
+    post_id: str = Field(foreign_key="post.post_id", primary_key=True)
     post: Post = Relationship(back_populates="likes")
     liker_user_id: int = Field(foreign_key="user.user_id", primary_key=True)
     liker: User = Relationship(back_populates="likes")

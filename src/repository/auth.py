@@ -4,7 +4,7 @@ from jose import JWTError, jwt
 from datetime import datetime, timedelta
 from ...lib.models import User
 from ...lib.schemas import UserSchema, UserPublic
-from typing import Optional
+from typing import Optional, Annotated
 from os import getenv
 
 from argon2 import PasswordHasher
@@ -31,18 +31,17 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
         return False
 
 
-def authorize(token: str, db: Session) -> UserPublic:
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
+
+def authorize(token: str, db: Session, credentials_exception) -> UserPublic:
+
+
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("username")
         if username is None:
             raise credentials_exception
     except JWTError:
+        print(JWTError)
         raise credentials_exception
 
     user = db.query(User).filter(User.username == username).first()
@@ -54,10 +53,7 @@ def authorize(token: str, db: Session) -> UserPublic:
         fullname=user.fullname,
         username=user.username,
         bio=user.bio,
-        highlighted_posts=user.highlighted_posts,
-        authored_posts=user.authored_posts
     )
-    return
 
 
 # Function to create a new user

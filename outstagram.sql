@@ -10,16 +10,16 @@ CREATE TABLE user (
 );
 
 -- Create the media_url table
-CREATE TABLE media_url (
-    media_url_id INT PRIMARY KEY AUTO_INCREMENT,
-    post_id INT,
+CREATE TABLE mediaurl (
+    post_id VARCHAR(255),
     url VARCHAR(255) NOT NULL,
-    FOREIGN KEY (post_id) REFERENCES post(post_id) ON DELETE CASCADE
+    FOREIGN KEY (post_id) REFERENCES post(post_id) ON DELETE CASCADE,
+    PRIMARY KEY (post_id, url)
 );
 
 -- Create the post table
 CREATE TABLE post (
-    post_id INT PRIMARY KEY AUTO_INCREMENT,
+    post_id VARCHAR(255) PRIMARY KEY AUTO_INCREMENT,
     media_url_id INT,
     caption TEXT,
     post_category ENUM('tech', 'entertainment', 'business', 'vlog', 'lifestyle') NOT NULL,
@@ -30,9 +30,9 @@ CREATE TABLE post (
 );
 
 -- Create the post_comment table
-CREATE TABLE post_comment (
+CREATE TABLE postcomment (
     comment_id INT PRIMARY KEY AUTO_INCREMENT,
-    post_id INT,
+    post_id VARCHAR(255),
     content TEXT NOT NULL,
     author_user_id INT,
     datetime_commented DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -41,8 +41,8 @@ CREATE TABLE post_comment (
 );
 
 -- Create the post_like table
-CREATE TABLE post_like (
-    post_id INT,
+CREATE TABLE postlike (
+    post_id VARCHAR(255),
     liker_user_id INT,
     datetime_liked DATETIME DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (post_id, liker_user_id),
@@ -51,17 +51,17 @@ CREATE TABLE post_like (
 );
 
 -- Create the post_comment_like table
-CREATE TABLE post_comment_like (
+CREATE TABLE postcommentlike (
     comment_id INT,
     liker_user_id INT,
     datetime_liked DATETIME DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (comment_id, liker_user_id),
-    FOREIGN KEY (comment_id) REFERENCES post_comment(comment_id) ON DELETE CASCADE,
+    FOREIGN KEY (comment_id) REFERENCES postcomment(comment_id) ON DELETE CASCADE,
     FOREIGN KEY (liker_user_id) REFERENCES user(user_id) ON DELETE CASCADE
 );
 
 
-CREATE TABLE follow_request (
+CREATE TABLE followrequest (
     request_id INT PRIMARY KEY AUTO_INCREMENT,
     requester_user_id INT,
     requested_user_id INT,

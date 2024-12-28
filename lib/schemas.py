@@ -29,7 +29,7 @@ class UserSchema(BaseModel):
 
 
 class MediaURLSchema(BaseModel):
-    media_url_id: Optional[int]
+    post_id: str
     url: str
 
 
@@ -48,7 +48,7 @@ class PostCommentSchema(BaseModel):
 
 
 class PostSchema(BaseModel):
-    post_id: Optional[int]
+    post_id: Optional[str]
     media_urls: Optional[List[MediaURLSchema]]
     caption: Optional[str]
     post_category: PostCategory
@@ -60,17 +60,17 @@ class PostSchema(BaseModel):
 
 
 class PostPublic(BaseModel):
-    post_id: int # No optional here since it will always be there
+    post_id: Optional[str] # No optional here since it will always be there
     caption: Optional[str]
     post_category: PostCategory
     datetime_posted: datetime
-    author: UserSchema
+    author: str
     highlighted_by_author: bool
-    media_urls: Optional[List[MediaURLSchema]]
+    media_urls: Optional[List[str]]
 
 
 class UserPublic(BaseModel):
-    #user_id: int
+    user_id: int
     username: str
     fullname: str
     bio: Optional[str]

@@ -2,10 +2,11 @@ from fastapi import FastAPI, Depends, HTTPException, status, Query
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from .lib.database_connection import SessionLocal, engine
-from .lib.schemas import UserSchema, PostSchema, PostCommentSchema, UserPublic, PostPublic
+from .lib.schemas import UserSchema, PostSchema, PostCommentSchema, UserPublic, PostPublic, PostCreate, CommentCreate
 from .lib.models import PostLike, User, Post, PostComment, PostCategory
 from .src.repository.auth import create_user, authenticate_user, create_access_token, authorize
-from .src.repository.post_operations import create_post, get_post, get_all_posts, update_post, delete_post, like_post_repo
+from .src.repository.posts import create_post, get_post, get_all_posts, update_post, delete_post, like_post_repo
+from .src.repository.comments import add_comment_repo
 from typing import List, Optional, Annotated
 
 from sqlmodel import SQLModel
@@ -63,44 +64,25 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
 
 # Endpoint to create a new post
 @app.post("/posts", response_model=PostPublic)
-async def create_new_post(post: PostPublic, current_user: UserPublic = Depends(get_current_user), db: Session = Depends(get_db)):
+async def create_new_post(post: PostCreate, current_user: UserPublic = Depends(get_current_user), db: Session = Depends(get_db)):
 
-    if current_user:
-        newpost = create_post(db=db, post=post, author_user_id=int(current_user.user_id), author_username = post.author)
-        print("\n\n\nnewpost result: ")
-        print(newpost)
-        return newpost
-    else:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+    return create_post(db=db, post=post, author_user_id=int(current_user.user_id), author_username = current_user.username)
 
 
 @app.post("/posts/{post_id}/like", response_model=PostLike, status_code=status.HTTP_201_CREATED)
 def like_post(post_id: str, current_user: UserPublic = Depends(get_current_user), db: Session = Depends(get_db)):
 
     #print("\n\n\n in like post, current user is: ", current_user)
-
-    if current_user:
-        return like_post_repo(post_id, current_user, db)
-    else:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
-        return;
+    return like_post_repo(post_id, current_user, db)
 
 
 
 
-@app.post("/posts/{post_id}/comment/{user_id}", response_model=PostComment, status_code=status.HTTP_201_CREATED)
-def create_comment(post_id: int, user_id: int, comment_content: str, current_user: UserPublic = Depends(get_current_user)):
-    with Session(engine) as session:
-        post = session.get(Post, post_id)
-        user = session.get(User, user_id)
-        if not post or not user:
-            raise HTTPException(status_code=404, detail="Post or User not found")
+@app.post("/posts/{post_id}/comment", response_model=PostComment, status_code=status.HTTP_201_CREATED)
+def create_comment(post_id: str, comment_data: CommentCreate, current_user: UserPublic = Depends(get_current_user), db: Session = Depends(get_db)):
 
-        comment = PostComment(post=post, user=user, content=comment_content)
-        session.add(comment)
-        session.commit()
-        session.refresh(comment)
-        return comment
+    return add_comment_repo(comment_data.content, post_id, current_user, db)
+
 
 
 

@@ -59,6 +59,17 @@ class PostSchema(BaseModel):
     likes: Optional[List[PostLikeSchema]]
 
 
+class CommentCreate(BaseModel):
+    content: str
+
+
+class PostCreate(BaseModel):
+    media_urls: List[str]
+    highlighted_by_author: bool
+    caption: str
+    post_category: PostCategory
+
+
 class PostPublic(BaseModel):
     post_id: Optional[str] # No optional here since it will always be there
     caption: Optional[str]

@@ -1,7 +1,9 @@
 
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 from ...lib.models import Post, User, MediaURL, PostLike
-from ...lib.schemas import Post, PostPublic, UserPublic
+from ...lib.schemas import Post, PostPublic, UserPublic, PostCreate
+from ...lib.exceptions import AlreadyLiked
 from uuid import uuid4
 from datetime import datetime
 from typing import List
@@ -9,7 +11,7 @@ from uuid import uuid4
 
 
 # Function to create a new post
-def create_post(db: Session, post: Post, author_user_id: int, author_username: str) -> PostPublic:
+def create_post(db: Session, post: PostCreate, author_user_id: int, author_username: str) -> PostPublic:
 
     post_id_formulated = uuid4()
 
@@ -77,9 +79,12 @@ def like_post_repo(post_id: str, liker: UserPublic, db: Session):
 
     #print("\n\n\nformulated post liek: ", postLike)
 
-    db.add(postLike)
-    db.commit()
-    db.refresh(postLike)  # Refresh the instance to get the latest data from the database
+    try:
+        db.add(postLike)
+        db.commit()
+        db.refresh(postLike)  # Refresh the instance to get the latest data from the database
+    except IntegrityError:
+        raise AlreadyLiked
 
     #print("db ops done")
 

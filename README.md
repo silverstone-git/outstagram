@@ -102,13 +102,23 @@ curl -X POST "http://localhost:8000/posts" \
 -H "Authorization: Bearer YOUR_BEARER_TOKEN" \
 -H "Content-Type: application/json" \
 -d '{
-    "post_id": "dummy field",
-    "author": "dummy field",
     "media_urls": ["YOUR_MEDIA_URL1", "YOU_MEDIA_URL2"],
     "highlighted_by_author": YOUR_HIGHLIGHTED_SELECTION,
     "caption": "YOUR_CAPTION",
     "post_category": "YOUR_POST_CATEGORY",
-    "datetime_posted": "1970-01-01",
 }'
 
+```
+
+- for commenting
+
+```bash
+
+curl -X POST \
+  http://localhost:8000/posts/34a5166e-0959-43c7-a2cb-82c885a0928f/comment \
+  -H "Authorization: Bearer YOUR_BEARER_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "content": "YOUR_COMMENT"
+  }'
 ```

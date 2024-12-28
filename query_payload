@@ -1,0 +1,14 @@
+#!/usr/bin/bash
+
+curl -X POST \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user_id": "32",
+    "fullname": "iron",
+    "username": "cyto",
+    "bio": "out of order",
+    "email": "silverstone965@gmail.com",
+    "password": "12345678",
+    "date_of_birth": "2003-08-14"
+  }' \
+  http://127.0.0.1:8000/register

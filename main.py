@@ -10,7 +10,6 @@ from typing import List
 
 from sqlmodel import SQLModel
 
-# Create the FastAPI app
 app = FastAPI()
 
 # Create the database tables
@@ -27,9 +26,9 @@ def get_db():
 # OAuth2 password bearer for token authentication
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
-# Endpoint for user registration
+
 @app.post("/register", response_model=UserPublic, status_code=status.HTTP_201_CREATED)
-async def register(user: UserSchema, db: Session = Depends(get_db)):
+async def register(user: User, db: Session = Depends(get_db)):
     return create_user(db=db, user=user)
 
 

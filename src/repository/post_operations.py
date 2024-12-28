@@ -11,7 +11,7 @@ from typing import List
 def create_post(db: Session, post: Post, author_user_id: str) -> PostPublic:
     # Create a new Post instance
     new_post = Post(
-        post_id=str(uuid4()),  # Generate a new unique post ID
+        #post_id=str(uuid4()),   Generate a new unique post ID
         media_urls=post.media_urls,  # Assign media URLs from the request
         caption=post.caption,  # Assign caption from the request
         post_category=post.post_category,  # Assign post category from the request
@@ -25,7 +25,7 @@ def create_post(db: Session, post: Post, author_user_id: str) -> PostPublic:
     db.refresh(new_post)  # Refresh the instance to get the latest data from the database
     
     return PostPublic(
-        post_id=new_post.post_id,
+        #post_id=new_post.post_id,
         media_urls=new_post.media_urls,
         caption=new_post.caption,
         post_category=new_post.post_category,

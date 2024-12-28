@@ -9,17 +9,33 @@ from sqlmodel import Field, Session, Relationship, SQLModel, create_engine, sele
 class User(SQLModel, table=True):
     user_id: Optional[int] = Field(default=None, primary_key=True)
     fullname: str = Field(nullable=False)
-    username: str = Field(nullable=False, unique=True)
+    username: str = Field(nullable=False, unique=True, index = True)
+    password: str = Field(nullable=False)
+    email: str = Field(nullable=False, unique=True, index = True)
     bio: Optional[str] = None
     date_of_birth: Optional[date] = None
     posts: List["Post"] = Relationship(back_populates="author")
     comments: List["PostComment"] = Relationship(back_populates="author")
     likes: List["PostLike"] = Relationship(back_populates="liker")
     comment_likes: List["PostCommentLike"] = Relationship(back_populates="liker")
-    follow_requests_sent: List["FollowRequest"] = Relationship(back_populates="requester")
-    follow_requests_received: List["FollowRequest"] = Relationship(back_populates="requested")
-    friendships1: List["Friendship"] = Relationship(back_populates="user1")
-    friendships2: List["Friendship"] = Relationship(back_populates="user2")
+
+
+    follow_requests_sent: List["FollowRequest"] = Relationship(
+        back_populates="requester",
+        sa_relationship_kwargs={'foreign_keys': 'FollowRequest.requester_user_id'}
+    )
+    follow_requests_received: List["FollowRequest"] = Relationship(
+        back_populates="requested",
+        sa_relationship_kwargs={'foreign_keys': 'FollowRequest.requested_user_id'}
+    )
+    friendships1: List["Friendship"] = Relationship(
+        back_populates="user1",
+        sa_relationship_kwargs={'foreign_keys': 'Friendship.user1_id'}
+    )
+    friendships2: List["Friendship"] = Relationship(
+        back_populates="user2",
+        sa_relationship_kwargs={'foreign_keys': 'Friendship.user2_id'}
+    )
 
 
 class PostCategory(str, Enum):
@@ -80,17 +96,29 @@ class FollowRequestStatus(str, Enum):
 class FollowRequest(SQLModel, table=True):
     request_id: Optional[int] = Field(default=None, primary_key=True)
     requester_user_id: int = Field(foreign_key="user.user_id")
-    requester: User = Relationship(back_populates="follow_requests_sent")
+    requester: User = Relationship(
+        back_populates="follow_requests_sent",
+        sa_relationship_kwargs={'foreign_keys': '[FollowRequest.requester_user_id]'}
+    )
     requested_user_id: int = Field(foreign_key="user.user_id")
-    requested: User = Relationship(back_populates="follow_requests_received")
+    requested: User = Relationship(
+        back_populates="follow_requests_received",
+        sa_relationship_kwargs={'foreign_keys': '[FollowRequest.requested_user_id]'}
+    )
     datetime_requested: datetime = Field(default_factory=datetime.utcnow)
     status: FollowRequestStatus = Field(default="pending")
 
 class Friendship(SQLModel, table=True):
     friendship_id: Optional[int] = Field(default=None, primary_key=True)
     user1_id: int = Field(foreign_key="user.user_id")
-    user1: User = Relationship(back_populates="friendships1")
+    user1: User = Relationship(
+        back_populates="friendships1",
+        sa_relationship_kwargs={'foreign_keys': '[Friendship.user1_id]'}
+    )
     user2_id: int = Field(foreign_key="user.user_id")
-    user2: User = Relationship(back_populates="friendships2")
+    user2: User = Relationship(
+        back_populates="friendships2",
+        sa_relationship_kwargs={'foreign_keys': '[Friendship.user2_id]'}
+    )
     datetime_friended: datetime = Field(default_factory=datetime.utcnow)
 

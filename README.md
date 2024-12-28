@@ -5,7 +5,7 @@
 - media_url
 
 ## Tables
-- user -> user_id, fullname, username, bio, date_of_birth
+- user -> user_id, fullname, username, email, password, bio, date_of_birth
 - post -> post_id, media_url_id, caption, post_category (tech/entertainment/business/vlog/lifestyle), datetime_posted, author_user_id, highlighted_by_author (boolean)
 - media_url -> media_url_id, post_id, url
 - post_comment -> comment_id, post_id, content, author_user_id, datetime_commented

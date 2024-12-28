@@ -3,21 +3,24 @@ from passlib.context import CryptContext
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
 from ...lib.models import User
-from ...lib.schemas import User, UserPublic
+from ...lib.schemas import UserSchema, UserPublic
 from typing import Optional
 from os import getenv
+
+from argon2 import PasswordHasher
+from argon2.exceptions import VerifyMismatchError
 
 # Configuration for JWT
 SECRET_KEY = getenv('OUTSTAGRAM_SECRET_KEY', '')
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
-# Password hashing context
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Initialize Argon2 hasher
+ph = PasswordHasher()
 
 # Function to hash a password
 def get_password_hash(password: str) -> str:
-    return pwd_context.hash(password)
+    return ph.hash(password)
 
 # Function to verify a password
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -59,17 +62,17 @@ def create_user(db: Session, user: User) -> UserPublic:
     existing_user = db.query(User).filter(User.username == user.username).first()
     if existing_user:
         raise ValueError("Username already registered")
+
+    hashed = get_password_hash(user.password)
+
     
-    # Create a new User instance
     new_user = User(
-        user_id=str(uuid4()),  # Generate a new unique user ID
         fullname=user.fullname,
         username=user.username,
         email=user.email,
-        hashed_password=get_password_hash(user.password),  # Hash the password
+        password=hashed,
         bio=user.bio,
-        highlighted_posts=[],  # Initialize with empty lists
-        authored_posts=[]
+        date_of_birth=user.date_of_birth,
     )
     
     # Add the new user to the session and commit to the database
@@ -78,12 +81,10 @@ def create_user(db: Session, user: User) -> UserPublic:
     db.refresh(new_user)  # Refresh the instance to get the latest data
     
     return UserPublic(
-        user_id=new_user.user_id,
+        #user_id=new_user.user_id,
         fullname=new_user.fullname,
         username=new_user.username,
         bio=new_user.bio,
-        highlighted_posts=new_user.highlighted_posts,
-        authored_posts=new_user.authored_posts
     )
 
 # Function to create an access token

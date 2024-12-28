@@ -2,9 +2,9 @@
 from datetime import date, datetime
 from typing import List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 
-from .models import (  # Assuming models.py resides in the same directory
+from .models import (
     FollowRequest, FollowRequestStatus, Friendship, MediaURL, Post, PostCategory, PostComment, PostLike, User
 )
 
@@ -12,9 +12,20 @@ from .models import (  # Assuming models.py resides in the same directory
 class UserSchema(BaseModel):
     user_id: Optional[int]
     fullname: str
+    email: Optional[EmailStr]
     username: str
     bio: Optional[str]
     date_of_birth: Optional[date]
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {"email": "test@example.com"},
+                {"email": "invalid-email"},
+                {"email": None},
+            ]
+        }
+    }
 
 
 class MediaURLSchema(BaseModel):
@@ -53,13 +64,13 @@ class PostPublic(BaseModel):
     caption: Optional[str]
     post_category: PostCategory
     datetime_posted: datetime
-    author: UserSchema # Assuming you have a UserSchema
+    author: UserSchema
     highlighted_by_author: bool
     media_urls: Optional[List[MediaURLSchema]]
 
 
 class UserPublic(BaseModel):
-    user_id: int
+    #user_id: int
     username: str
     fullname: str
     bio: Optional[str]

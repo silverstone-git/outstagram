@@ -74,11 +74,11 @@ fastapi dev main.py
 curl -X POST \
   -H "Content-Type: application/json" \
   -d '{
-    "fullname": "yourfullname",
-    "username": "yourusername",
-    "bio": "yourbio",
-    "email": "youremail@example.com",
-    "password": "very complicated password",
+    "fullname": "YOUR_FULL_NAME",
+    "username": "YOUR_USERNAME",
+    "bio": "YOUR_BIO",
+    "email": "YOUR_EMAIL",
+    "password": "YOUR_PASSWORD",
     "date_of_birth": "1970-01-01"
   }' \
   http://127.0.0.1:8000/register
@@ -91,7 +91,7 @@ curl -X POST \
 
 curl -X POST http://127.0.0.1:8000/login \
   -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "username=yourusername&password=yourpassword"
+  -d "username=YOUR_USERNAME&password=YOUR_PASSWORD"
 ```
 
 
@@ -108,6 +108,14 @@ curl -X POST "http://localhost:8000/posts" \
     "post_category": "YOUR_POST_CATEGORY",
 }'
 
+```
+
+- for liking
+```bash
+
+curl -X POST "http://localhost:8000/posts/YOUR_POST_ID/like" \
+     -H "Authorization: Bearer YOUR_BEARER_TOKEN" \
+     -H "Content-Type: application/json"
 ```
 
 - for commenting

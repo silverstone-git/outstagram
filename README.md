@@ -30,3 +30,32 @@
     FOREIGN KEY (requester_user_id) REFERENCES user(user_id) ON DELETE CASCADE,
     FOREIGN KEY (requested_user_id) REFERENCES user(user_id) ON DELETE CASCADE
 );
+
+
+## Tests
+
+- for account creation
+
+```bash
+curl -X POST \
+  -H "Content-Type: application/json" \
+  -d '{
+    "fullname": "yourfullname",
+    "username": "yourusername",
+    "bio": "yourbio",
+    "email": "youremail@example.com",
+    "password": "very complicated password",
+    "date_of_birth": "1970-01-01"
+  }' \
+  http://127.0.0.1:8000/register
+
+```
+
+- for access token
+
+```bash
+
+curl -X POST http://127.0.0.1:8000/login \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "username=yourusername&password=yourpassword"
+```

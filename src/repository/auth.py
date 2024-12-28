@@ -24,7 +24,11 @@ def get_password_hash(password: str) -> str:
 
 # Function to verify a password
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+    try:
+        ph.verify(hashed_password, plain_password)
+        return True
+    except VerifyMismatchError:
+        return False
 
 
 def authorize(token: str, db: Session) -> UserPublic:
@@ -101,14 +105,12 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
 # Function to authenticate a user
 def authenticate_user(db: Session, username: str, password: str) -> Optional[UserPublic]:
     user = db.query(User).filter(User.username == username).first()
-    if not user or not verify_password(password, user.hashed_password):
+    if not user or not verify_password(password, user.password):
         return None  # Return None if authentication fails
     return UserPublic(
         user_id=user.user_id,
         fullname=user.fullname,
         username=user.username,
         bio=user.bio,
-        highlighted_posts=user.highlighted_posts,
-        authored_posts=user.authored_posts
     )
 

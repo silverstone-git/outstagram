@@ -1,14 +1,19 @@
 #!/usr/bin/bash
 
-curl -X POST \
-  -H "Content-Type: application/json" \
-  -d '{
-    "user_id": "32",
-    "fullname": "iron",
-    "username": "cyto",
-    "bio": "out of order",
-    "email": "silverstone965@gmail.com",
-    "password": "12345678",
-    "date_of_birth": "2003-08-14"
-  }' \
-  http://127.0.0.1:8000/register
+#curl -X POST \
+#  -H "Content-Type: application/json" \
+#  -d '{
+#    "user_id": "32",
+#    "fullname": "iron",
+#    "username": "cyto",
+#    "bio": "out of order",
+#    "email": "silverstone965@gmail.com",
+#    "password": "12345678",
+#    "date_of_birth": "2003-08-14"
+#  }' \
+#  http://127.0.0.1:8000/register
+
+
+curl -X POST http://localhost:8000/login \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "username=cyto&password=12345678"

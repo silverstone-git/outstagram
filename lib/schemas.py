@@ -34,10 +34,16 @@ class MediaURLSchema(BaseModel):
 
 
 class PostLikeSchema(BaseModel):
-    post_id: int
+    post_id: str
     liker: UserSchema
     datetime_liked: datetime
 
+
+class PostLikeUseful(BaseModel):
+    post_id: str
+    liker_user_id: int
+    liker_username: str
+    datetime_liked: datetime
 
 class PostCommentSchema(BaseModel):
     comment_id: Optional[int]

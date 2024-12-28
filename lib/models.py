@@ -76,7 +76,7 @@ class PostComment(SQLModel, table=True):
     likes: List["PostCommentLike"] = Relationship(back_populates="comment")
 
 class PostLike(SQLModel, table=True):
-    post_id: str = Field(foreign_key="post.post_id", primary_key=True)
+    post_id: str = Field(foreign_key="post.post_id", primary_key=True, index = True)
     post: Post = Relationship(back_populates="likes")
     liker_user_id: int = Field(foreign_key="user.user_id", primary_key=True)
     liker: User = Relationship(back_populates="likes")

@@ -2,11 +2,11 @@ from fastapi import FastAPI, Depends, HTTPException, status, Query
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from .lib.database_connection import SessionLocal, engine
-from .lib.schemas import UserSchema, PostSchema, PostCommentSchema, UserPublic, PostPublic, PostCreate, CommentCreate
+from .lib.schemas import UserSchema, PostSchema, PostCommentSchema, UserPublic, PostPublic, PostCreate, CommentCreate, PostLikeUseful
 from .lib.models import PostLike, User, Post, PostComment, PostCategory
 from .src.repository.auth import create_user, authenticate_user, create_access_token, authorize
-from .src.repository.posts import create_post, get_post, get_all_posts, update_post, delete_post, like_post_repo
-from .src.repository.comments import add_comment_repo
+from .src.repository.posts import create_post, get_post, get_all_posts, update_post, delete_post, like_post_repo, get_likes
+from .src.repository.comments import add_comment_repo, get_comments
 from typing import List, Optional, Annotated
 
 from sqlmodel import SQLModel
@@ -69,6 +69,7 @@ async def create_new_post(post: PostCreate, current_user: UserPublic = Depends(g
     return create_post(db=db, post=post, author_user_id=int(current_user.user_id), author_username = current_user.username)
 
 
+# Endpoint to like a post
 @app.post("/posts/{post_id}/like", response_model=PostLike, status_code=status.HTTP_201_CREATED)
 def like_post(post_id: str, current_user: UserPublic = Depends(get_current_user), db: Session = Depends(get_db)):
 
@@ -76,45 +77,33 @@ def like_post(post_id: str, current_user: UserPublic = Depends(get_current_user)
     return like_post_repo(post_id, current_user, db)
 
 
-
-
+# Endpoint to comment on a post
 @app.post("/posts/{post_id}/comment", response_model=PostComment, status_code=status.HTTP_201_CREATED)
 def create_comment(post_id: str, comment_data: CommentCreate, current_user: UserPublic = Depends(get_current_user), db: Session = Depends(get_db)):
 
     return add_comment_repo(comment_data.content, post_id, current_user, db)
 
 
+# Endpoint to see likes, page by page
+@app.get("/posts/{post_id}/likes/{page}", response_model=list[PostLikeUseful])
+def get_post_likes(post_id: str, page: int, current_user: UserPublic = Depends(get_current_user), db: Session = Depends(get_db)):
+    return get_likes(post_id, db, page)
 
 
-@app.get("/posts/{post_id}/likes", response_model=list[PostLike])
-def get_post_likes(post_id: int, current_user: Annotated[User, Depends(get_current_user)]):
-    with Session(engine) as session:
-        post = session.get(Post, post_id)
-        if not post:
-            raise HTTPException(status_code=404, detail="Post not found")
-        return post.likes
-
-
-@app.get("/posts/{post_id}/comments", response_model=list[PostComment])
-def get_post_comments(post_id: int, current_user: Annotated[User, Depends(get_current_user)]):
-    with Session(engine) as session:
-        post = session.get(Post, post_id)
-        if not post:
-            raise HTTPException(status_code=404, detail="Post not found")
-        return post.comments
+# Endpoint to see comments, page by page
+@app.get("/posts/{post_id}/comments/{page}", response_model=list[PostComment])
+def get_post_comments(post_id: str, page: int, current_user: UserPublic = Depends(get_current_user), db: Session = Depends(get_db)):
+    return get_comments(post_id, db, page)
 
 
 # Endpoint to get a post by ID
 @app.get("/posts/{post_id}", response_model=PostPublic)
 async def read_post(post_id: str, db: Session = Depends(get_db)):
-    post = get_post(db=db, post_id=post_id)
-    if post is None:
-        raise HTTPException(status_code=404, detail="Post not found")
-    return post
+    return get_post(post_id=post_id, db=db)
 
 
 
-# Endpoint to get all posts
+# Endpoint to get all posts of followed users, paginated reverse chronological, friends first
 @app.get("/posts", response_model=List[PostPublic])
 async def read_all_posts(db: Session = Depends(get_db)):
     return get_all_posts(db=db)

@@ -1,9 +1,11 @@
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload, selectinload
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from ...lib.models import Post, User, MediaURL, PostLike
 from ...lib.schemas import Post, PostPublic, UserPublic, PostCreate
-from ...lib.exceptions import AlreadyLiked
+from ...lib.exceptions import AlreadyLiked, CouldntGetLikes, InvalidPageLength, PostNotFound
+from ...lib.constants import LIKE_PAGE_LENGTH
 from uuid import uuid4
 from datetime import datetime
 from typing import List
@@ -57,18 +59,35 @@ def create_post(db: Session, post: PostCreate, author_user_id: int, author_usern
     )
 
 # Function to retrieve a post by its ID
-def get_post(db: Session, post_id: str) -> PostPublic:
+def get_post(post_id: str, db: Session) -> PostPublic:
     post = db.query(Post).filter(Post.post_id == post_id).first()
+    
+    #author = db.query(User).filter(User.user_id == post.author_user_id).first()
+
+    #media_urls = db.scalars(select(MediaURL.url).where(MediaURL.post_id == post_id)).all()
+    
+    # Uses Relationships to avoid N+1 queries
+    post = (
+        db.query(Post)
+        .options(
+            joinedload(Post.author),
+            selectinload(Post.media_urls)
+        )
+        .filter(Post.post_id == post_id)
+        .first()
+    )
+
     if post is None:
-        return None  # Return None if the post is not found
+        raise PostNotFound
     
     return PostPublic(
         post_id=post.post_id,
-        media_urls=post.media_urls,
         caption=post.caption,
         post_category=post.post_category,
         datetime_posted=post.datetime_posted.isoformat(),
-        author_user_id=post.author_user_id,
+        highlighted_by_author= post.highlighted_by_author,
+        author= post.author.username,
+        media_urls = map(lambda x: x.url, post.media_urls)
     )
 
 
@@ -89,6 +108,40 @@ def like_post_repo(post_id: str, liker: UserPublic, db: Session):
     #print("db ops done")
 
     return postLike
+
+def get_likes(post_id: str, db: Session, page: int):
+    # returns Postlike[] array
+
+    if page < 1:
+        raise InvalidPageLength
+
+    try:
+        offset = (page - 1) * LIKE_PAGE_LENGTH
+
+        statement = (
+            select(PostLike, User.username)
+            .join(User, PostLike.liker_user_id == User.user_id)
+            .where(PostLike.post_id == post_id)  # Use where instead of filter_by
+            .limit(LIKE_PAGE_LENGTH)
+            .offset(offset)
+        )
+        
+        results = db.execute(statement).all()
+
+        likes_with_usernames = []
+        for post_like, username in results:
+            like_dict = post_like.dict()
+            like_dict['liker_username'] = username
+            likes_with_usernames.append(like_dict)
+        
+        #print("\n\n\n\nres: ", likes_with_usernames)
+
+        return likes_with_usernames
+
+
+    except:
+        raise CouldntGetLikes
+    
 
 
 

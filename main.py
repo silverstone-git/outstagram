@@ -1,12 +1,12 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, Query
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from .lib.database_connection import SessionLocal, engine
 from .lib.schemas import UserSchema, PostSchema, PostCommentSchema, UserPublic, PostPublic
-from .lib.models import PostLike, User, Post, PostComment
+from .lib.models import PostLike, User, Post, PostComment, PostCategory
 from .src.repository.auth import create_user, authenticate_user, create_access_token
 from .src.repository.post_operations import create_post, get_post, get_all_posts, update_post, delete_post
-from typing import List
+from typing import List, Optional
 
 from sqlmodel import SQLModel
 
@@ -141,10 +141,9 @@ async def delete_existing_post(post_id: str, db: Session = Depends(get_db)):
 
 
 # Endpoint to get a user (public)
-@router.get("/users/{username}", response_model=UserPublic)
+@app.get("/users/{username}", response_model=UserPublic)
 async def get_user_profile(
     username: str,
-    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     user = db.query(User).filter(User.username == username).first()
@@ -176,12 +175,19 @@ async def get_user_profile(
     }
 
 
-@router.post("/users/{username}/follow", status_code=status.HTTP_201_CREATED)
+@app.post("/users/{username}/follow", status_code=status.HTTP_201_CREATED)
 async def follow_user(
     username: str,
-    current_user: User = Depends(get_current_user),
+    token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
 ):
+
+    user = authorize(token, db)
+
+    if not user :
+        raise HTTPException(status_code=403, detail="Forbidden")
+        return;
+
     target_user = db.query(User).filter(User.username == username).first()
     if not target_user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -214,13 +220,12 @@ async def follow_user(
 
 
 # Endpoint to Get user's posts
-@router.get("/users/{username}/posts", response_model=List[PostPublic])
+@app.get("/users/{username}/posts", response_model=List[PostPublic])
 async def get_user_posts(
     username: str,
-    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    if()
+
     user = db.query(User).filter(User.username == username).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -238,7 +243,7 @@ async def get_user_posts(
 
 
 # Edpoint( protected) for liking post
-@router.post("/posts/{post_id}/like")
+@app.post("/posts/{post_id}/like")
 async def toggle_post_like(
     post_id: int,
     token: str = Depends(oauth2_scheme),
@@ -273,12 +278,20 @@ async def toggle_post_like(
 
 
 # 7. Like/Unlike comment
-@router.post("/comments/{comment_id}/like")
+@app.post("/comments/{comment_id}/like")
 async def toggle_comment_like(
     comment_id: int,
-    current_user: User = Depends(get_current_user),
+    token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
 ):
+
+    
+    user = authorize(token, db)
+
+    if not user :
+        raise HTTPException(status_code=403, detail="Forbidden")
+        return;
+
     comment = db.query(PostComment).filter(PostComment.comment_id == comment_id).first()
     if not comment:
         raise HTTPException(status_code=404, detail="Comment not found")
@@ -303,14 +316,21 @@ async def toggle_comment_like(
     return {"message": message}
 
 # 8. Get user feed (paginated)
-@router.get("/feed", response_model=List[PostResponse])
+@app.get("/feed", response_model=List[PostPublic])
 async def get_feed(
     page: int = Query(1, gt=0),
+    token: str = Depends(oauth2_scheme),
     limit: int = Query(10, gt=0, le=50),
     category: Optional[PostCategory] = None,
-    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+
+    user = authorize(token, db)
+
+    if not user :
+        raise HTTPException(status_code=403, detail="Forbidden")
+        return;
+
     # Get users that current user follows
     following_ids = db.query(FollowRequest.requested_user_id).filter(
         FollowRequest.requester_user_id == current_user.user_id,

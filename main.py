@@ -5,7 +5,7 @@ from .lib.database_connection import SessionLocal, engine
 from .lib.schemas import UserSchema, PostSchema, PostCommentSchema, UserPublic, PostPublic, PostCreate, CommentCreate, PostLikeUseful, FollowRequestUseful, UserProfileSchema
 from .lib.models import PostLike, User, Post, PostComment, PostCategory, Friendship
 from .src.repository.auth import create_user, authenticate_user, create_access_token, authorize
-from .src.repository.posts import create_post, get_post, get_all_posts, update_post, delete_post, like_post_repo, get_likes
+from .src.repository.posts import create_post, get_post, get_all_posts, update_post, delete_post, like_post_repo, get_likes, get_feed_repo
 from .src.repository.comments import add_comment_repo, get_comments
 from .src.repository.users import get_dashboard, get_user_posts_repo, get_user_profile_repo
 from .src.repository.frienship import send_follow_request, request_approve_repo, get_follow_requests
@@ -190,46 +190,11 @@ async def get_user_posts(
 # Endpoint to get all posts of followed users, paginated reverse chronological, friends first
 @app.get("/feed", response_model=List[PostPublic])
 async def get_feed(
-    page: int = Query(1, gt=0),
-    token: str = Depends(oauth2_scheme),
-    limit: int = Query(10, gt=0, le=50),
-    category: Optional[PostCategory] = None,
+    page: int | None = Query(None, description="Page number for pagination"),
+    category: str | None = Query(None, description="Filter by category"),
+    current_user: UserPublic = Depends(get_current_user), 
     db: Session = Depends(get_db)
 ):
 
-    user = authorize(token, db)
-
-    if not user :
-        raise HTTPException(status_code=403, detail="Forbidden")
-        return;
-
-    # Get users that current user follows
-    following_ids = db.query(FollowRequest.requested_user_id).filter(
-        FollowRequest.requester_user_id == current_user.user_id,
-        FollowRequest.status == "accepted"
-    ).all()
-    following_ids = [id for (id,) in following_ids]
-    
-    # Base query
-    query = db.query(Post).filter(Post.author_user_id.in_(following_ids))
-    
-    # Apply category filter if provided
-    if category:
-        query = query.filter(Post.post_category == category)
-    
-    # Apply pagination and ordering
-    posts = query.order_by(
-        desc(Post.datetime_posted)
-    ).offset(
-        (page - 1) * limit
-    ).limit(limit).all()
-    
-    # Add is_liked status for each post
-    for post in posts:
-        post.is_liked = db.query(PostLike).filter(
-            PostLike.post_id == post.post_id,
-            PostLike.liker_user_id == current_user.user_id
-        ).first() is not None
-    
-    return posts
+    return get_feed_repo(page=page, category=category, current_user=current_user, db=db)
 

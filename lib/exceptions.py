@@ -30,3 +30,8 @@ class PostNotFound(HTTPException):
 class CouldntGetDashboard(HTTPException):
     def __init__(self, detail: str = "We couldnt get the posts for this user"):
         super().__init__(status_code=status.HTTP_400_BAD_REQUEST, detail=detail)
+
+class InvalidCategory(HTTPException):
+    def __init__(self, detail: str = "This category input is invalid"):
+        super().__init__(status_code=status.HTTP_400_BAD_REQUEST, detail=detail)
+

@@ -1,16 +1,23 @@
 
 from sqlalchemy.orm import Session, joinedload, selectinload
-from sqlalchemy import select, exists, case, and_, delete
+#from sqlalchemy import select, exists, case, and_, delete
+from sqlmodel import select, func, and_, join, outerjoin, case, exists, delete, desc
 from sqlalchemy.exc import IntegrityError
-from ...lib.models import Post, User, MediaURL, PostLike
+from ...lib.models import Post, User, MediaURL, PostLike, PostCategory, FollowRequest
 from ...lib.schemas import Post, PostPublic, UserPublic, PostCreate
-from ...lib.exceptions import AlreadyLiked, CouldntGetLikes, InvalidPageLength, PostNotFound
-from ...lib.constants import LIKE_PAGE_LENGTH
+from ...lib.exceptions import AlreadyLiked, CouldntGetLikes, InvalidPageLength, PostNotFound, InvalidCategory
+from ...lib.constants import LIKE_PAGE_LENGTH, FEED_PAGE_LENGTH
 from uuid import uuid4
 from datetime import datetime
 from typing import List
 from uuid import uuid4
 
+def is_valid_category(category_str: str) -> bool:
+    try:
+        PostCategory(category_str)
+        return True
+    except ValueError:
+        return False
 
 # Function to create a new post
 def create_post(db: Session, post: PostCreate, author_user_id: int, author_username: str) -> PostPublic:
@@ -167,6 +174,74 @@ def get_all_posts(db: Session) -> List[PostPublic]:
         )
         for post in posts
     ]
+
+
+def get_feed_repo(current_user: UserPublic, db: Session, category: str = None, page: int = 1) -> List[PostPublic]:
+
+    if page is not None and page < 1:
+        raise InvalidPageLength
+    elif page is None:
+        page = 1
+
+
+    # Get users that current user follows
+    following_ids = db.query(FollowRequest.requested_user_id).filter(
+        FollowRequest.requester_user_id == current_user.user_id,
+        FollowRequest.status == "accepted"
+    ).all()
+    following_ids = [uid for (uid,) in following_ids]
+    
+
+    if category is not None and is_valid_category(category):
+        statement = (
+            select(
+                Post,
+                User.username,
+                func.group_concat(MediaURL.url).label("media_urls"),
+                PostLike.datetime_liked.label("is_liked"),
+            )
+            .join(User, Post.author_user_id == User.user_id)
+            .outerjoin(MediaURL, Post.post_id == MediaURL.post_id)
+            .outerjoin(PostLike, and_(PostLike.post_id == Post.post_id, PostLike.liker_user_id == current_user.user_id))
+            .group_by(Post.post_id, Post.author_user_id, User.username, PostLike.datetime_liked)
+            .where(and_(Post.author_user_id.in_(following_ids), Post.post_category == category))
+            .order_by(
+                desc(Post.datetime_posted))
+            .offset(
+                (page - 1) * FEED_PAGE_LENGTH)
+            .limit(FEED_PAGE_LENGTH)
+        )
+    elif category is not None:
+        raise InvalidCategory
+    else:
+        statement = (
+            select(
+                Post,
+                User.username,
+                func.group_concat(MediaURL.url).label("media_urls"),
+                PostLike.datetime_liked.label("is_liked"),
+            )
+            .join(User, Post.author_user_id == User.user_id)
+            .outerjoin(MediaURL, Post.post_id == MediaURL.post_id)
+            .outerjoin(PostLike, and_(PostLike.post_id == Post.post_id, PostLike.liker_user_id == current_user.user_id))
+            .group_by(Post.post_id, Post.author_user_id, User.username, PostLike.datetime_liked)
+            .where(Post.author_user_id.in_(following_ids))
+            .order_by(
+                desc(Post.datetime_posted))
+            .offset(
+                (page - 1) * FEED_PAGE_LENGTH)
+            .limit(FEED_PAGE_LENGTH)
+        )
+
+    posts = list(db.execute(statement).all())
+
+    posts = list(map(lambda x: PostPublic(**x[0].model_dump(), author = x[1], media_urls = x[2].split(','), is_liked = True if x[3] is not None else False), posts))
+
+    #print("\n\n\ngot posts: ", posts, type(posts), type(posts[0]))
+
+    
+    return posts
+
 
 # Function to update a post
 def update_post(db: Session, post_id: str, updated_data: Post) -> PostPublic:

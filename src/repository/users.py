@@ -41,8 +41,8 @@ def get_user_posts_repo(username: str, current_user: UserPublic, db: Session, pa
         .outerjoin(PostLike, and_(PostLike.post_id == Post.post_id, PostLike.liker_user_id == current_user.user_id))
         .group_by(Post.post_id, Post.author_user_id, PostLike.datetime_liked)
         .where(Post.author_user_id == target_user_id)
-        .limit(USER_POSTS_PAGE_LENGTH)
         .offset(offset)
+        .limit(USER_POSTS_PAGE_LENGTH)
     )
 
     posts = list(db.execute(statement).all())

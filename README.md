@@ -236,3 +236,12 @@ curl http://localhost:8000/users/{USERNAME} \
 
 ```
 
+- for getting the post feed (reverse chronological order, with category and page optional url params)
+
+```bash 
+
+curl "http://localhost:8000/feed?page={PAGE_NUMBER}&category={YOUR_POST_CATEGORY}" \
+ -H "Authorization: Bearer YOUR_BEARER_TOKEN" \
+ -H "Content-Type: application/json"
+
+```

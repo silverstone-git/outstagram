@@ -31,6 +31,16 @@ fastapi dev main.py
 
 ```
 
+## Environment Variables
+
+### for the mysql database
+- OUTSTAGRAM_USERNAME
+- OUTSTAGRAM_PASSWORD
+- OUTSTAGRAM_DBNAME
+
+### JWT Secret key
+- OUTSTAGRAM_SECRET_KEY
+
 
 ## Entity Sets
 - user

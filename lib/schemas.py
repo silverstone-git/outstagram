@@ -29,6 +29,21 @@ class UserSchema(BaseModel):
     }
 
 
+class UserProfileSchema(BaseModel):
+    user_id: int
+    fullname: str
+    username: str
+    bio: Optional[str]
+    posts_count: int
+    followers_count: int
+    following_count: int
+
+    # 0.5 if the request is pending, 1 is accepted, 0 otherwise
+    they_follow_you: float
+    you_follow_them: float
+
+
+
 class MediaURLSchema(BaseModel):
     post_id: str
     url: str

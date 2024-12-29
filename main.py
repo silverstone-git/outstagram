@@ -2,12 +2,12 @@ from fastapi import FastAPI, Depends, HTTPException, status, Query
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from .lib.database_connection import SessionLocal, engine
-from .lib.schemas import UserSchema, PostSchema, PostCommentSchema, UserPublic, PostPublic, PostCreate, CommentCreate, PostLikeUseful, FollowRequestUseful
+from .lib.schemas import UserSchema, PostSchema, PostCommentSchema, UserPublic, PostPublic, PostCreate, CommentCreate, PostLikeUseful, FollowRequestUseful, UserProfileSchema
 from .lib.models import PostLike, User, Post, PostComment, PostCategory, Friendship
 from .src.repository.auth import create_user, authenticate_user, create_access_token, authorize
 from .src.repository.posts import create_post, get_post, get_all_posts, update_post, delete_post, like_post_repo, get_likes
 from .src.repository.comments import add_comment_repo, get_comments
-from .src.repository.users import get_dashboard, get_user_posts_repo
+from .src.repository.users import get_dashboard, get_user_posts_repo, get_user_profile_repo
 from .src.repository.frienship import send_follow_request, request_approve_repo, get_follow_requests
 from typing import List, Optional, Annotated
 
@@ -131,38 +131,13 @@ async def delete_existing_post(post_id: str, db: Session = Depends(get_db)):
 
 
 # Endpoint to get a user (public)
-@app.get("/users/{username}", response_model=UserPublic)
+@app.get("/users/{username}", response_model=UserProfileSchema)
 async def get_user_profile(
     username: str,
+    current_user: UserPublic = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    user = db.query(User).filter(User.username == username).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    posts_count = db.query(Post).filter(Post.author_user_id == user.user_id).count()
-    followers_count = db.query(FollowRequest).filter(
-        FollowRequest.requested_user_id == user.user_id,
-        FollowRequest.status == "accepted"
-    ).count()
-    following_count = db.query(FollowRequest).filter(
-        FollowRequest.requester_user_id == user.user_id,
-        FollowRequest.status == "accepted"
-    ).count()
-    
-    is_following = db.query(FollowRequest).filter(
-        FollowRequest.requester_user_id == current_user.user_id,
-        FollowRequest.requested_user_id == user.user_id,
-        FollowRequest.status == "accepted"
-    ).first() is not None
-    
-    return {
-        **user.dict(),
-        "posts_count": posts_count,
-        "followers_count": followers_count,
-        "following_count": following_count,
-        "is_following": is_following
-    }
+    return get_user_profile_repo(target_username = username, current_user = current_user, db = db)
 
 
 # Endpoint the see all follow requests

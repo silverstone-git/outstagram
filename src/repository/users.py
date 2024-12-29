@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session, selectinload
+from sqlalchemy import or_, and_
 from sqlmodel import select, func, and_, join, outerjoin
-from ...lib.models import Post, User, PostLike, MediaURL
+from ...lib.models import Post, User, PostLike, MediaURL, FollowRequest
 from ...lib.schemas import UserPublic, PostPublic
 from ...lib.exceptions import CouldntGetDashboard, InvalidPageLength
 from ...lib.constants import USER_POSTS_PAGE_LENGTH
@@ -51,4 +52,66 @@ def get_user_posts_repo(username: str, current_user: UserPublic, db: Session, pa
     #print("posts got: ", posts)
 
     return posts
+
+
+def get_user_profile_repo(target_username: str, current_user: UserPublic, db: Session):
+
+    target = db.query(User).filter(User.username == target_username).first()
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    posts_count = db.query(Post).filter(Post.author_user_id == target.user_id).count()
+
+    followers_count = db.query(FollowRequest).filter(
+        FollowRequest.requested_user_id == target.user_id,
+        FollowRequest.status == "accepted"
+    ).count()
+    following_count = db.query(FollowRequest).filter(
+        FollowRequest.requester_user_id == target.user_id,
+        FollowRequest.status == "accepted"
+    ).count()
+
+
+    all_the_requests_between_you_two = db.query(FollowRequest).filter(
+        or_(
+            and_(
+                FollowRequest.requester_user_id == current_user.user_id,
+                FollowRequest.requested_user_id == target.user_id,
+            ),
+            and_(
+                FollowRequest.requester_user_id == target.user_id,
+                FollowRequest.requested_user_id == current_user.user_id,
+            ),
+        ),
+    ).all()
+
+    # no_of_reqs = len(all_the_requests_between_you_two)
+
+    you_follow_them_status = 0
+    they_follow_you_status = 0
+
+    for req in all_the_requests_between_you_two:
+        if req.requester_user_id == current_user.user_id and req.status == 'pending':
+            # youre an absolute simp
+            you_follow_them_status = 0.5
+        elif req.requester_user_id == current_user.user_id and req.status == 'accepted':
+            you_follow_them_status = 1
+        elif req.requester_user_id == target.user_id and req.status == 'pending':
+            they_follow_you_status = 0.5
+        elif req.requester_user_id == target.user_id and req.status == 'accepted':
+            they_follow_you_status = 1
+
+
+    print("\n\n requests found:")
+    print(all_the_requests_between_you_two)
+
+    
+    return {
+        **target.dict(),
+        "posts_count": posts_count,
+        "followers_count": followers_count,
+        "following_count": following_count,
+        "they_follow_you": they_follow_you_status,
+        "you_follow_them": you_follow_them_status
+    }
     

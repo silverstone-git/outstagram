@@ -226,3 +226,13 @@ curl http://localhost:8000/users/{USERNAME}/posts/{PAGE_NUMBER} \
 
 ```
 
+- for getting the user profile (posts count, followers/following count, they follow you or not or vice versa)
+
+```bash 
+
+curl http://localhost:8000/users/{USERNAME} \
+ -H "Authorization: Bearer {YOUR_BEARER_TOKEN}" \
+ -H "Content-Type: application/json"
+
+```
+

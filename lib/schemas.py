@@ -82,9 +82,11 @@ class PostPublic(BaseModel):
     caption: Optional[str]
     post_category: PostCategory
     datetime_posted: datetime
-    author: str
+    author_user_id: int
     highlighted_by_author: bool
+    is_liked: bool
     media_urls: Optional[List[str]]
+    author: str
 
 
 class UserPublic(BaseModel):

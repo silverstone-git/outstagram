@@ -1,6 +1,6 @@
 
 from sqlalchemy.orm import Session, joinedload, selectinload
-from sqlalchemy import select
+from sqlalchemy import select, exists, case, and_, delete
 from sqlalchemy.exc import IntegrityError
 from ...lib.models import Post, User, MediaURL, PostLike
 from ...lib.schemas import Post, PostPublic, UserPublic, PostCreate
@@ -54,21 +54,28 @@ def create_post(db: Session, post: PostCreate, author_user_id: int, author_usern
         author_user_id=new_post.author_user_id,
         author = author_username,
         highlighted_by_author = new_post.highlighted_by_author,
-        media_urls = post.media_urls
-
+        media_urls = post.media_urls,
+        # abhi abhi bani h toh liked kese hogi
+        is_liked = False
     )
 
 # Function to retrieve a post by its ID
-def get_post(post_id: str, db: Session) -> PostPublic:
+def get_post(post_id: str, current_user: UserPublic, db: Session) -> PostPublic:
     post = db.query(Post).filter(Post.post_id == post_id).first()
     
     #author = db.query(User).filter(User.user_id == post.author_user_id).first()
 
     #media_urls = db.scalars(select(MediaURL.url).where(MediaURL.post_id == post_id)).all()
     
-    # Uses Relationships to avoid N+1 queries
-    post = (
-        db.query(Post)
+
+    # condensed query using sqlalchemy's Eager Loading strategy
+    post_with_is_liked = (
+        db.query(Post, exists().where(
+        and_(
+            PostLike.post_id == Post.post_id,
+            PostLike.liker_user_id == current_user.user_id
+        )
+        ).label('is_liked'))
         .options(
             joinedload(Post.author),
             selectinload(Post.media_urls)
@@ -77,15 +84,14 @@ def get_post(post_id: str, db: Session) -> PostPublic:
         .first()
     )
 
+    post, is_liked = post_with_is_liked
+
     if post is None:
         raise PostNotFound
     
     return PostPublic(
-        post_id=post.post_id,
-        caption=post.caption,
-        post_category=post.post_category,
-        datetime_posted=post.datetime_posted.isoformat(),
-        highlighted_by_author= post.highlighted_by_author,
+        **post.model_dump(),
+        is_liked = is_liked,
         author= post.author.username,
         media_urls = map(lambda x: x.url, post.media_urls)
     )
@@ -94,21 +100,22 @@ def get_post(post_id: str, db: Session) -> PostPublic:
 def like_post_repo(post_id: str, liker: UserPublic, db: Session):
     # like a post and return a PostLike
 
-    postLike = PostLike(post_id = post_id, liker_user_id = liker.user_id)
+    post_like_existing = db.get(PostLike, (post_id, liker.user_id))
+    print("\n\npost like existing: ", post_like_existing)
 
-    #print("\n\n\nformulated post liek: ", postLike)
-
-    try:
+    if not post_like_existing:
+        postLike = PostLike(post_id = post_id, liker_user_id = liker.user_id)
         db.add(postLike)
         db.commit()
         db.refresh(postLike)  # Refresh the instance to get the latest data from the database
-    except IntegrityError:
-        # unlike instead of give an error
-        db.delete(postLike)
+        return postLike
+    else:
+        statement = delete(PostLike).where(and_(PostLike.liker_user_id == liker.user_id, PostLike.post_id == post_id))
+        db.execute(statement)
         db.commit()
         print("\n\nUnliked\n\n")
+        return PostLike(post_id = '', liker_user_id = 0)
 
-    return postLike
 
 def get_likes(post_id: str, db: Session, page: int):
     # returns Postlike[] array

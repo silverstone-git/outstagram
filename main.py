@@ -7,7 +7,7 @@ from .lib.models import PostLike, User, Post, PostComment, PostCategory, Friends
 from .src.repository.auth import create_user, authenticate_user, create_access_token, authorize
 from .src.repository.posts import create_post, get_post, get_all_posts, update_post, delete_post, like_post_repo, get_likes
 from .src.repository.comments import add_comment_repo, get_comments
-from .src.repository.users import get_dashboard
+from .src.repository.users import get_dashboard, get_user_posts_repo
 from .src.repository.frienship import send_follow_request, request_approve_repo, get_follow_requests
 from typing import List, Optional, Annotated
 
@@ -101,14 +101,14 @@ def get_post_comments(post_id: str, page: int, current_user: UserPublic = Depend
 
 # Endpoint to get a post by ID
 @app.get("/posts/{post_id}", response_model=PostPublic)
-async def read_post(post_id: str, db: Session = Depends(get_db)):
-    return get_post(post_id=post_id, db=db)
+async def read_post(post_id: str, current_user: UserPublic = Depends(get_current_user), db: Session = Depends(get_db)):
+    return get_post(post_id=post_id, current_user=current_user, db=db)
 
 
 # Endpoint to see all the logged in user's posts, along with user data
-@app.get("/dashboard")
-async def dashboard(current_user: UserPublic = Depends(get_current_user), db: Session = Depends(get_db)):
-    return get_dashboard(current_user, db=db)
+@app.get("/dashboard/{page}")
+async def dashboard(page: int, current_user: UserPublic = Depends(get_current_user), db: Session = Depends(get_db)):
+    return get_dashboard(user = current_user, db=db, page = page)
 
 
 # Endpoint to update a post
@@ -198,26 +198,15 @@ async def request_approve(
 
 
 # Endpoint to Get user's posts
-@app.get("/users/{username}/posts", response_model=List[PostPublic])
+@app.get("/users/{username}/posts/{page}", response_model=List[PostPublic])
 async def get_user_posts(
     username: str,
-    db: Session = Depends(get_db)
+    page: int,
+    current_user: UserPublic = Depends(get_current_user), 
+    db: Session = Depends(get_db),
 ):
 
-    user = db.query(User).filter(User.username == username).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    posts = db.query(Post).filter(Post.author_user_id == user.user_id).all()
-    
-    # Add is_liked status for each post
-    for post in posts:
-        post.is_liked = db.query(PostLike).filter(
-            PostLike.post_id == post.post_id,
-            PostLike.liker_user_id == current_user.user_id
-        ).first() is not None
-    
-    return posts
+    return get_user_posts_repo(username = username, current_user = current_user, db = db, page = page)
 
 
 

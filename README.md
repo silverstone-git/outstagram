@@ -90,7 +90,7 @@ curl -X POST \
     "password": "YOUR_PASSWORD",
     "date_of_birth": "1970-01-01"
   }' \
-  http://127.0.0.1:8000/register
+  http://localhost:8000/register
 
 ```
 
@@ -98,7 +98,8 @@ curl -X POST \
 
 ```bash
 
-curl -X POST http://127.0.0.1:8000/login \
+curl -X POST \
+http://localhost:8000/login \
   -H "Content-Type: application/x-www-form-urlencoded" \
   -d "username=YOUR_USERNAME&password=YOUR_PASSWORD"
 ```
@@ -107,7 +108,8 @@ curl -X POST http://127.0.0.1:8000/login \
 - for posting
 
 ```bash
-curl -X POST "http://localhost:8000/posts" \
+curl -X POST \
+http://localhost:8000/posts \
 -H "Authorization: Bearer YOUR_BEARER_TOKEN" \
 -H "Content-Type: application/json" \
 -d '{
@@ -122,7 +124,8 @@ curl -X POST "http://localhost:8000/posts" \
 - for liking
 ```bash
 
-curl -X POST "http://localhost:8000/posts/YOUR_POST_ID/like" \
+curl -X POST \
+    http://localhost:8000/posts/{YOUR_POST_ID}/like \
      -H "Authorization: Bearer YOUR_BEARER_TOKEN" \
      -H "Content-Type: application/json"
 ```
@@ -132,7 +135,7 @@ curl -X POST "http://localhost:8000/posts/YOUR_POST_ID/like" \
 ```bash
 
 curl -X POST \
-  http://localhost:8000/posts/YOUR_POST_ID/comment \
+  http://localhost:8000/posts/{YOUR_POST_ID}/comment \
   -H "Authorization: Bearer YOUR_BEARER_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -144,7 +147,7 @@ curl -X POST \
 
 ```bash
 
-curl http://localhost:8000/posts/YOUR_POST_ID/likes/PAGE_NUMBER \
+curl http://localhost:8000/posts/{YOUR_POST_ID}/likes/{PAGE_NUMBER} \
   -H "Authorization: Bearer YOUR_BEARER_TOKEN" \
   -H "Content-Type: application/json"
 
@@ -154,7 +157,7 @@ curl http://localhost:8000/posts/YOUR_POST_ID/likes/PAGE_NUMBER \
 
 ```bash
 
-curl http://localhost:8000/posts/YOUR_POST_ID/comments/PAGE_NUMBER \
+curl http://localhost:8000/posts/{YOUR_POST_ID}/comments/{PAGE_NUMBER} \
   -H "Authorization: Bearer YOUR_BEARER_TOKEN" \
   -H "Content-Type: application/json"
 
@@ -164,7 +167,7 @@ curl http://localhost:8000/posts/YOUR_POST_ID/comments/PAGE_NUMBER \
 
 ```bash
 
-curl http://localhost:8000/posts/YOUR_POST_ID \
+curl http://localhost:8000/posts/{YOUR_POST_ID} \
   -H "Authorization: Bearer YOUR_BEARER_TOKEN" \
   -H "Content-Type: application/json"
 
@@ -174,7 +177,7 @@ curl http://localhost:8000/posts/YOUR_POST_ID \
 
 ```bash 
 
-curl http://localhost:8000/dashboard \
+curl http://localhost:8000/dashboard/{PAGE_NUMBER} \
   -H "Authorization: Bearer YOUR_BEARER_TOKEN" \
   -H "Content-Type: application/json"
 
@@ -184,7 +187,7 @@ curl http://localhost:8000/dashboard \
 
 ```bash 
 curl -X POST \
-  http://localhost:8000/users/USERNAME_TO_FOLLOW/follow \
+  http://localhost:8000/users/{USERNAME_TO_FOLLOW}/follow \
   -H "Authorization: Bearer YOUR_BEARER_TOKEN" \
   -H "Content-Type: application/json" \
 
@@ -210,6 +213,16 @@ curl -X POST \
   http://localhost:8000/request-approve/{REQUEST_ID_TO_APPROVE} \
   -H "Authorization: Bearer YOUR_BEARER_TOKEN" \
   -H "Content-Type: application/json" \
+
+```
+
+- for getting all the posts of a given username
+
+```bash 
+
+curl http://localhost:8000/users/{USERNAME}/posts/{PAGE_NUMBER} \
+ -H "Authorization: Bearer YOUR_BEARER_TOKEN" \
+ -H "Content-Type: application/json"
 
 ```
 

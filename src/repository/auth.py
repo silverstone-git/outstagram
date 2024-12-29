@@ -57,7 +57,7 @@ def authorize(token: str, db: Session, credentials_exception) -> UserPublic:
 
 
 # Function to create a new user
-def create_user(db: Session, user: User) -> UserPublic:
+def create_user(db: Session, user: UserSchema) -> UserPublic:
     # Check if the username already exists
     existing_user = db.query(User).filter(User.username == user.username).first()
     if existing_user:
@@ -81,7 +81,7 @@ def create_user(db: Session, user: User) -> UserPublic:
     db.refresh(new_user)  # Refresh the instance to get the latest data
     
     return UserPublic(
-        #user_id=new_user.user_id,
+        user_id=new_user.user_id,
         fullname=new_user.fullname,
         username=new_user.username,
         bio=new_user.bio,

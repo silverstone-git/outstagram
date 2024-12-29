@@ -2,12 +2,12 @@ from fastapi import FastAPI, Depends, HTTPException, status, Query
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from .lib.database_connection import SessionLocal, engine
-from .lib.schemas import UserSchema, PostSchema, PostCommentSchema, UserPublic, PostPublic, PostCreate, CommentCreate, PostLikeUseful
-from .lib.models import PostLike, User, Post, PostComment, PostCategory
+from .lib.schemas import UserSchema, PostSchema, PostCommentSchema, UserPublic, PostPublic, PostCreate, CommentCreate, PostLikeUseful, FollowRequestUseful
+from .lib.models import PostLike, User, Post, PostComment, PostCategory, Friendship
 from .src.repository.auth import create_user, authenticate_user, create_access_token, authorize
 from .src.repository.posts import create_post, get_post, get_all_posts, update_post, delete_post, like_post_repo, get_likes
 from .src.repository.comments import add_comment_repo, get_comments
-from .src.repository.user import get_dashboard
+from .src.repository.users import get_dashboard
 from .src.repository.frienship import send_follow_request, request_approve_repo, get_follow_requests
 from typing import List, Optional, Annotated
 
@@ -47,8 +47,9 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)], db: Se
 
 
 
+# Endpoint for user registration
 @app.post("/register", response_model=UserPublic, status_code=status.HTTP_201_CREATED)
-async def register(user: User, db: Session = Depends(get_db)):
+async def register(user: UserSchema, db: Session = Depends(get_db)):
     return create_user(db=db, user=user)
 
 
@@ -164,7 +165,8 @@ async def get_user_profile(
     }
 
 
-@app.get("/follow-requests")
+# Endpoint the see all follow requests
+@app.get("/follow-requests", response_model = list[FollowRequestUseful])
 async def follow_user(
     current_user: UserPublic = Depends(get_current_user), 
     db: Session = Depends(get_db)
@@ -173,6 +175,7 @@ async def follow_user(
     return get_follow_requests(current_user, db)
 
 
+# Endpoint to follow a user
 @app.post("/users/{username}/follow", status_code=status.HTTP_201_CREATED)
 async def follow_user(
     username: str,
@@ -183,7 +186,8 @@ async def follow_user(
     return send_follow_request(username, current_user, db)
 
 
-@app.get("/request-approve/{request_id}")
+# Endpoint to approve a request_id
+@app.post("/request-approve/{request_id}", response_model = Friendship, status_code=status.HTTP_201_CREATED)
 async def request_approve(
     request_id: str,
     current_user: UserPublic = Depends(get_current_user), 

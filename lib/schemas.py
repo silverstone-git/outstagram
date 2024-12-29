@@ -10,12 +10,13 @@ from .models import (
 
 
 class UserSchema(BaseModel):
-    user_id: Optional[int]
+    # used for creation, etc.
     fullname: str
-    email: Optional[EmailStr]
     username: str
     bio: Optional[str]
-    date_of_birth: Optional[date]
+    email: Optional[EmailStr]
+    password: str
+    date_of_birth: date
 
     model_config = {
         "json_schema_extra": {
@@ -95,10 +96,14 @@ class UserPublic(BaseModel):
 
 class FollowRequestSchema(BaseModel):
     request_id: Optional[int]
-    requester: UserSchema
-    requested: UserSchema
+    requester_user_id: int
+    requested_user_id: int
     datetime_requested: datetime
     status: FollowRequestStatus
+
+
+class FollowRequestUseful(FollowRequestSchema):
+    requester_username: str
 
 
 class FriendshipSchema(BaseModel):

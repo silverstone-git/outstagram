@@ -111,16 +111,17 @@ class FollowRequest(SQLModel, table=True):
 
 class Friendship(SQLModel, table=True):
     # should also contain information about 1to2, 2to1, or both-ways
-    friendship_id: Optional[int] = Field(default=None, primary_key=True)
-    user1_id: int = Field(foreign_key="user.user_id")
+    user1_id: int = Field(foreign_key="user.user_id", primary_key = True)
     user1: User = Relationship(
         back_populates="friendships1",
         sa_relationship_kwargs={'foreign_keys': '[Friendship.user1_id]'}
     )
-    user2_id: int = Field(foreign_key="user.user_id")
+    user2_id: int = Field(foreign_key="user.user_id", primary_key = True)
     user2: User = Relationship(
         back_populates="friendships2",
         sa_relationship_kwargs={'foreign_keys': '[Friendship.user2_id]'}
     )
+    # zero for both-ways, 1 or 2 otherwise
+    being_followed: int = Field(default= None)
     datetime_friended: datetime = Field(default_factory=datetime.utcnow)
 

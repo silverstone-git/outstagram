@@ -72,9 +72,9 @@ CREATE TABLE followrequest (
 );
 
 CREATE TABLE friendship (
-    friendship_id INT PRIMARY KEY AUTO_INCREMENT,
-    user1_id INT,
-    user2_id INT,
+    user1_id INT PRIMARY KEY,
+    user2_id INT PRIMARY KEY,
+    being_followed INT,
     datetime_friended DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user1_id) REFERENCES user(user_id) ON DELETE CASCADE,
     FOREIGN KEY (user2_id) REFERENCES user(user_id) ON DELETE CASCADE,

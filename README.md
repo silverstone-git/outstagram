@@ -46,9 +46,8 @@ fastapi dev main.py
 - postlike -> post_id, liker_user_id, datetime_liked -> first two primary key
 - postcomment_like -> comment_id, liker_user_id, datetime_liked
 - friendship (
-    friendship_id INT PRIMARY KEY AUTO_INCREMENT,
-    user1_id INT,
-    user2_id INT,
+    user1_id INT PRIMARY KEY,
+    user2_id INT PRIMARY KEY,
     datetime_friended DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user1_id) REFERENCES user(user_id) ON DELETE CASCADE,
     FOREIGN KEY (user2_id) REFERENCES user(user_id) ON DELETE CASCADE,
@@ -160,3 +159,47 @@ curl http://localhost:8000/posts/YOUR_POST_ID \
   -H "Content-Type: application/json"
 
 ```
+
+- for getting the user dashboard information: user information and, 'posts' field
+
+```bash 
+
+curl http://localhost:8000/dashboard \
+  -H "Authorization: Bearer YOUR_BEARER_TOKEN" \
+  -H "Content-Type: application/json"
+
+```
+
+- for sending a follow request to a user
+
+```bash 
+curl -X POST \
+  http://localhost:8000/users/USERNAME_TO_FOLLOW/follow \
+  -H "Authorization: Bearer YOUR_BEARER_TOKEN" \
+  -H "Content-Type: application/json" \
+
+```
+
+
+- for getting all the follow requests along with request_id for the logged in user
+
+```bash 
+
+curl http://localhost:8000/follow-requests \
+  -H "Authorization: Bearer YOUR_BEARER_TOKEN" \
+  -H "Content-Type: application/json" \
+
+```
+
+
+- for approving request given the request_id
+
+```bash 
+
+curl -X POST \
+  http://localhost:8000/request-approve/{REQUEST_ID_TO_APPROVE} \
+  -H "Authorization: Bearer YOUR_BEARER_TOKEN" \
+  -H "Content-Type: application/json" \
+
+```
+

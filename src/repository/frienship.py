@@ -5,9 +5,9 @@ from fastapi import HTTPException
 from sqlalchemy import select, and_, or_
 from sqlalchemy.exc import SQLAlchemyError
 
-def send_follow_request(target_user_id: int, current_user: UserPublic, db: Session):
+def send_follow_request(target_username: str, current_user: UserPublic, db: Session):
 
-    target_user = db.query(User).filter(User.username == target_user_id).first()
+    target_user = db.query(User).filter(User.username == target_username).first()
     if not target_user:
         raise HTTPException(status_code=404, detail="User not found")
     

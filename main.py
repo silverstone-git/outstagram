@@ -5,7 +5,7 @@ from .lib.database_connection import SessionLocal, engine
 from .lib.schemas import UserSchema, PostSchema, PostCommentSchema, UserPublic, PostPublic, PostCreate, CommentCreate, PostLikeUseful, FollowRequestUseful, UserProfileSchema
 from .lib.models import PostLike, User, Post, PostComment, PostCategory, Friendship
 from .src.repository.auth import create_user, authenticate_user, create_access_token, authorize
-from .src.repository.posts import create_post, get_post, get_all_posts, update_post, delete_post, like_post_repo, get_likes, get_feed_repo
+from .src.repository.posts import create_post, get_post, update_post, delete_post, like_post_repo, get_likes, get_feed_repo
 from .src.repository.comments import add_comment_repo, get_comments
 from .src.repository.users import get_dashboard, get_user_posts_repo, get_user_profile_repo
 from .src.repository.frienship import send_follow_request, request_approve_repo, get_follow_requests
@@ -62,7 +62,7 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
     
     access_token = create_access_token(data={"username": user.username})
-    return {"access_token": access_token, "token_type": "bearer"}
+    return {"access_token": access_token, "token_type": "bearer", "user": user}
 
 
 # Endpoint to create a new post
@@ -113,7 +113,7 @@ async def dashboard(page: int, current_user: UserPublic = Depends(get_current_us
 
 # Endpoint to update a post
 @app.put("/posts/{post_id}", response_model=PostPublic)
-async def update_existing_post(post_id: str, post: Post, db: Session = Depends(get_db)):
+async def update_existing_post(post_id: str, post: Post, current_user: UserPublic = Depends(get_current_user), db: Session = Depends(get_db)):
     updated_post = update_post(db=db, post_id=post_id, updated_data=post)
     if updated_post is None:
         raise HTTPException(status_code=404, detail="Post not found")
@@ -142,7 +142,7 @@ async def get_user_profile(
 
 # Endpoint the see all follow requests
 @app.get("/follow-requests", response_model = list[FollowRequestUseful])
-async def follow_user(
+async def get_follow_requests_endpoint(
     current_user: UserPublic = Depends(get_current_user), 
     db: Session = Depends(get_db)
 ):
@@ -164,7 +164,7 @@ async def follow_user(
 # Endpoint to approve a request_id
 @app.post("/request-approve/{request_id}", response_model = Friendship, status_code=status.HTTP_201_CREATED)
 async def request_approve(
-    request_id: str,
+    request_id: int,
     current_user: UserPublic = Depends(get_current_user), 
     db: Session = Depends(get_db)
 ):

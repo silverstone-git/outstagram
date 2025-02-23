@@ -45,8 +45,9 @@ class UserProfileSchema(BaseModel):
 
 
 class MediaURLSchema(BaseModel):
-    post_id: str
+    post_id: str | None
     url: str
+    media_type: str
 
 
 class PostLikeSchema(BaseModel):
@@ -71,7 +72,7 @@ class PostCommentSchema(BaseModel):
 
 class PostSchema(BaseModel):
     post_id: Optional[str]
-    media_urls: Optional[List[MediaURLSchema]]
+    media_urls: Optional[List[MediaURL]]
     caption: Optional[str]
     post_category: PostCategory
     datetime_posted: datetime
@@ -86,7 +87,7 @@ class CommentCreate(BaseModel):
 
 
 class PostCreate(BaseModel):
-    media_urls: List[str]
+    media_urls: List[MediaURLSchema]
     highlighted_by_author: bool
     caption: str
     post_category: PostCategory
@@ -96,11 +97,12 @@ class PostPublic(BaseModel):
     post_id: Optional[str] # No optional here since it will always be there
     caption: Optional[str]
     post_category: PostCategory
-    datetime_posted: datetime
+    # in ISO format
+    datetime_posted: str
     author_user_id: int
     highlighted_by_author: bool
-    is_liked: bool
-    media_urls: Optional[List[str]]
+    is_liked: bool | None
+    media_urls: Optional[List[MediaURL]]
     author: str
 
 

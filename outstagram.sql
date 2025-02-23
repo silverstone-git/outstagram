@@ -13,6 +13,7 @@ CREATE TABLE user (
 CREATE TABLE mediaurl (
     post_id VARCHAR(255),
     url VARCHAR(255) NOT NULL,
+    media_type VARCHAR(50) NOT NULL,
     FOREIGN KEY (post_id) REFERENCES post(post_id) ON DELETE CASCADE,
     PRIMARY KEY (post_id, url)
 );

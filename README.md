@@ -51,7 +51,7 @@ fastapi dev main.py
 ## Tables
 - user -> user_id, fullname, username, email, password, bio, date_of_birth
 - post -> post_id, media_url_id, caption, post_category (tech/entertainment/business/vlog/lifestyle), datetime_posted, author_user_id, highlighted_by_author (boolean)
-- mediaurl -> post_id, url -> both primary key
+- mediaurl -> post_id, url, media_type -> both primary key
 - postcomment -> comment_id, post_id, content, author_user_id, datetime_commented
 - postlike -> post_id, liker_user_id, datetime_liked -> first two primary key
 - postcomment_like -> comment_id, liker_user_id, datetime_liked
@@ -113,7 +113,7 @@ http://localhost:8000/posts \
 -H "Authorization: Bearer YOUR_BEARER_TOKEN" \
 -H "Content-Type: application/json" \
 -d '{
-    "media_urls": ["YOUR_MEDIA_URL1", "YOU_MEDIA_URL2"],
+    "media_urls": [{"url": "YOUR_MEDIA_URL1", "media_type": "image"}, {"url": "YOUR_MEDIA_URL2", "media_type": "video"}],
     "highlighted_by_author": YOUR_HIGHLIGHTED_SELECTION,
     "caption": "YOUR_CAPTION",
     "post_category": "YOUR_POST_CATEGORY",

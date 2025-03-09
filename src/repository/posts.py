@@ -26,20 +26,17 @@ def create_post(db: Session, post: PostCreate, author_user_id: int, author_usern
     """
     print("\n\n\npost is: : ")
     print(post)
-    print(post.caption, type(post.caption))
-    print(post.post_category, type(post.post_category))
-    print(author_user_id, type(author_user_id))
     """
 
     media_url_objects = []
     for media_url in post.media_urls:
-        media_url_object = MediaURL(post_id = post_id_formulated, url = media_url.url, media_type= media_url.media_type)
+        media_url_object = MediaURL(post_id = str(post_id_formulated), url = media_url.url, media_type= media_url.media_type)
         media_url_objects.append(media_url_object)
         db.add(media_url_object)
 
     # Create a new Post instance
     new_post = Post(
-        post_id=post_id_formulated,
+        post_id=str(post_id_formulated),
         caption=post.caption,  # Assign caption from the request
         post_category=post.post_category,  # Assign post category from the request
         author_user_id=int(author_user_id),  # Set the author user ID
@@ -53,14 +50,14 @@ def create_post(db: Session, post: PostCreate, author_user_id: int, author_usern
     #print("\n\n\ndb operations done\n\n\n")
     
     return PostPublic(
-        post_id=new_post.post_id,
+        post_id=str(new_post.post_id),
         caption=new_post.caption,
         post_category=new_post.post_category,
         datetime_posted=new_post.datetime_posted.isoformat(),
         author_user_id=0 if new_post.author_user_id == None  else new_post.author_user_id,
         author = author_username,
         highlighted_by_author = new_post.highlighted_by_author,
-        media_urls = list(map(lambda x: MediaURL(**x.model_dump(), post_id= new_post.post_id), post.media_urls)),
+        media_urls = list(map(lambda x: MediaURL(**x.model_dump(exclude= {'post_id'}), post_id= new_post.post_id), post.media_urls)),
         # abhi abhi bani h toh liked kese hogi
         is_liked = False
     )
@@ -198,7 +195,7 @@ def get_feed_repo(current_user: UserPublic, db: Session, category: str | None = 
             select(
                 Post,
                 User.username,
-                func.group_concat(MediaURL.url).label("media_urls"),
+                func.string_agg(MediaURL.url, ',').label("media_urls"),
                 PostLike.datetime_liked.label("is_liked"),
             )
             .join(User, Post.author_user_id == User.user_id)
@@ -219,7 +216,7 @@ def get_feed_repo(current_user: UserPublic, db: Session, category: str | None = 
             select(
                 Post,
                 User.username,
-                func.group_concat(MediaURL.url).label("media_urls"),
+                func.string_agg(MediaURL.url, ',').label("media_urls"),
                 PostLike.datetime_liked.label("is_liked"),
             )
             .join(User, Post.author_user_id == User.user_id)

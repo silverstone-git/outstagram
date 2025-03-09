@@ -33,7 +33,7 @@ def get_user_posts_repo(username: str, current_user: UserPublic, db: Session, pa
     statement = (
         select(
             Post,
-            func.group_concat(MediaURL.url).label("media_urls"),
+            func.string_agg(MediaURL.url, ',').label("media_urls"),
             PostLike.datetime_liked.label("is_liked"),
         )
         .join(User, Post.author_user_id == User.user_id)

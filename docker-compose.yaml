@@ -1,18 +1,4 @@
 services:
-  mysql:
-    image: mysql
-    restart: always
-    ports:
-      - "3306:3306"
-    networks:
-      - mynet
-    environment:
-      - MYSQL_HOST=outsie
-      - MYSQL_DATABASE=outstagram
-      - MYSQL_ROOT_PASSWORD=${OUTSTAGRAM_MYSQL_ROOT_PASSWORD:-passnotset}
-      - MYSQL_USER=outstagrammer
-      - MYSQL_PASSWORD=${OUTSTAGRAM_MYSQL_PASSWORD:-passnotset}
-
   outsie:
     image: ${DOCKER_USERNAME}/outstagram:${LATEST_TAG}
     build:
@@ -20,21 +6,12 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8671:8671"
-    depends_on:
-      mysql:
-        condition: service_started
     environment:
       - NODE_ENV=${NODE_ENV:-production}
       - OUTSTAGRAM_SECRET_KEY=${OUTSTAGRAM_SECRET_KEY:-passnotset}
       - OUTSTAGRAM_PASSWORD=${OUTSTAGRAM_MYSQL_PASSWORD:-passnotset}
-      - OUTSTAGRAM_DBNAME="outstagram"
-      - OUTSTAGRAM_USERNAME="outstagrammer"
+      - OUTSTAGRAM_DBHOST=mysql
+      - OUTSTAGRAM_DBNAME=${OUTSTAGRAM_DBNAME:-passnotset}
+      - OUTSTAGRAM_USERNAME=${OUTSTAGRAM_USERNAME:-passnotset}
     env_file:
       - .env.production
-    networks:
-      - mynet
-
-
-networks:
-  mynet:
-      driver: bridge

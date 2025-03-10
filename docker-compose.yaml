@@ -8,10 +8,10 @@ services:
       - "8671:8671"
     environment:
       - NODE_ENV=${NODE_ENV:-production}
-      - OUTSTAGRAM_SECRET_KEY=${OUTSTAGRAM_SECRET_KEY:-passnotset}
-      - OUTSTAGRAM_PASSWORD=${OUTSTAGRAM_MYSQL_PASSWORD:-passnotset}
-      - OUTSTAGRAM_DBHOST=mysql
-      - OUTSTAGRAM_DBNAME=${OUTSTAGRAM_DBNAME:-passnotset}
-      - OUTSTAGRAM_USERNAME=${OUTSTAGRAM_USERNAME:-passnotset}
+      - OUTSTAGRAM_SECRET_KEY=${OUTSTAGRAM_SECRET_KEY:-jwtkeynotset}
+      - OUTSTAGRAM_PASSWORD=${OUTSTAGRAM_PASSWORD:-passnotset}
+      - OUTSTAGRAM_DBHOST=${OUTSTAGRAM_DBHOST:-dbhostnotset}
+      - OUTSTAGRAM_DBNAME=${OUTSTAGRAM_DBNAME:-dbnamenotset}
+      - OUTSTAGRAM_USERNAME=${OUTSTAGRAM_USERNAME:-unamenotset}
     env_file:
       - .env.production

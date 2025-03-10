@@ -14,11 +14,25 @@ source ./your_venv_name/bin/activate
 
 ```
 
-Pip Packages needed (Install using `pip install`)
-- fastapi[all]
-- passlib
-- python-jose
-- argon2-cffi
+### Pip Packages needed
+
+Install using `pip install -r requirements.txt`
+
+
+## Environment Variables
+
+### Run-time variables, for the postgres database
+- OUTSTAGRAM_USERNAME
+- OUTSTAGRAM_PASSWORD
+- OUTSTAGRAM_DBNAME
+- OUTSTAGRAM_DBHOST
+
+### Run-time, variable, JWT Secret key
+- OUTSTAGRAM_SECRET_KEY
+
+### Build-time variables, for the docker building / fetching
+- DOCKER_USERNAME=cyt0
+- LATEST_TAG=latest
 
 
 ## Running
@@ -31,15 +45,27 @@ fastapi dev main.py
 
 ```
 
-## Environment Variables
+Production server ->
 
-### for the mysql database
-- OUTSTAGRAM_USERNAME
-- OUTSTAGRAM_PASSWORD
-- OUTSTAGRAM_DBNAME
+```bash
 
-### JWT Secret key
-- OUTSTAGRAM_SECRET_KEY
+fastapi run main.py --port {YOUR_DESIRED_PORT}
+
+```
+
+### Running using Docker
+
+```bash
+
+mkdir outstagram
+cd outstagram
+curl -L -o ./docker-compose.yaml https://raw.githubusercontent.com/silverstone-git/outstagram/main/docker-compose.yaml
+docker-compose pull
+docker-compose down
+docker-compose up -d
+
+```
+
 
 
 ## Entity Sets
@@ -48,31 +74,6 @@ fastapi dev main.py
 - post_comment
 - media_url
 
-## Tables
-- user -> user_id, fullname, username, email, password, bio, date_of_birth
-- post -> post_id, media_url_id, caption, post_category (tech/entertainment/business/vlog/lifestyle), datetime_posted, author_user_id, highlighted_by_author (boolean)
-- mediaurl -> post_id, url, media_type -> both primary key
-- postcomment -> comment_id, post_id, content, author_user_id, datetime_commented
-- postlike -> post_id, liker_user_id, datetime_liked -> first two primary key
-- postcomment_like -> comment_id, liker_user_id, datetime_liked
-- friendship (
-    user1_id INT PRIMARY KEY,
-    user2_id INT PRIMARY KEY,
-    datetime_friended DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user1_id) REFERENCES user(user_id) ON DELETE CASCADE,
-    FOREIGN KEY (user2_id) REFERENCES user(user_id) ON DELETE CASCADE,
-    UNIQUE (user1_id, user2_id)  -- Ensure that each friendship is unique
-);
-
-- followrequest (
-    request_id INT PRIMARY KEY AUTO_INCREMENT,
-    requester_user_id INT,
-    requested_user_id INT,
-    datetime_requested DATETIME DEFAULT CURRENT_TIMESTAMP,
-    status ENUM('pending', 'accepted', 'rejected') DEFAULT 'pending',
-    FOREIGN KEY (requester_user_id) REFERENCES user(user_id) ON DELETE CASCADE,
-    FOREIGN KEY (requested_user_id) REFERENCES user(user_id) ON DELETE CASCADE
-);
 
 
 ## Test Queries

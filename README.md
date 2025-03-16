@@ -55,6 +55,8 @@ fastapi run main.py --port {YOUR_DESIRED_PORT}
 
 ### Running using Docker
 
+- As an alternative to cloning the repository, you can directly install and run using the [docker image](https://hub.docker.com/r/cyt0/outstagram)
+
 ```bash
 
 mkdir outstagram

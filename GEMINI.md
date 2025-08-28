@@ -151,10 +151,36 @@ When testing the `POST /pariksha` endpoint, there were issues with correctly for
     ```
 -   **Why it worked:** The outer payload is enclosed in single quotes (`'`). The keys and string values within the JSON are enclosed in double quotes (`"`). The nested JSON string for `exam_json_str` also uses double quotes, which need to be escaped with a backslash (`\`) so they are treated as literal characters within the string.
 
-### 7.3. Python Import Issues
+### 7.3. Alternative to cURL: Python `requests` Script
+
+After repeated failures to correctly escape the JSON payload for the `POST /pariksha` endpoint using `curl`, a more reliable method was found using a simple Python script with the `requests` library. This approach avoids the complexities of shell command escaping.
+
+-   **The Problem:** Multiple attempts to send a JSON payload with a nested JSON string via `curl` resulted in `JSON decode error`.
+
+-   **The Solution:** A Python script was created to send the `POST` request. This script uses the `requests` library to construct and send the request, and the `json` library to handle the nested JSON string, which is a more robust solution.
+
+    ```python
+    import requests
+    import json
+
+    url = "http://localhost:8671/pariksha"
+    headers = {"Content-Type": "application/json"}
+    data = {
+        "exam_title": "New Exam from Script",
+        "exam_json_str": json.dumps({"subject": "Chemistry", "marks": 92})
+    }
+
+    response = requests.post(url, headers=headers, data=json.dumps(data))
+
+    print(response.status_code)
+    print(response.json())
+    ```
+
+### 7.4. Python Import Issues
 
 During development, a `ModuleNotFoundError` occurred when running the application in Docker. The error, `No module named 'app.src.lib'`, originated from an incorrect relative import in the newly created `src/repository/exams.py` file.
 
 -   **The Problem:** The import statement `from ..lib.models import Exam` was attempting to traverse up two directories from `exams.py` to find the `lib` directory. However, because of how the application was structured and run within the Docker container, this path was incorrect.
 
 -   **The Solution:** The import path was corrected to `from ...lib.models import Exam`. This change adjusted the relative path to correctly locate the `lib` directory from within the `src` module, resolving the `ModuleNotFoundError` and allowing the application to start successfully.
+

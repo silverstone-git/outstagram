@@ -269,7 +269,7 @@ curl -X POST \
 curl http://localhost:8000/pariksha?page=1
 ```
 
-**Note:** The `/pariksha` endpoint is paginated and returns a list of exams without the `exam_json_str` field. To get the full exam details, use the endpoint below.
+**Note:** The `/pariksha` endpoint is paginated, sorted by upload date (latest first), and returns a list of exams without the `exam_json_str` field. To get the full exam details, use the endpoint below.
 
 - for getting a specific exam
 

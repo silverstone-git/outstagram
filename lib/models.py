@@ -169,4 +169,5 @@ class Exam(SQLModel, table=True):
     exam_id: str = Field(primary_key=True)
     exam_title: str = Field(nullable=False)
     exam_json_str: str = Field(nullable=False)
+    datetime_uploaded: datetime = Field(default_factory=datetime.utcnow)
 

@@ -224,7 +224,14 @@ async def create_exam(exam_data: ExamCreate, db: Session = Depends(get_db)):
 
 @app.get("/pariksha", response_model=List[ExamPublicList])
 async def get_all_exams(page: int = 1, db: Session = Depends(get_db)):
-    return get_all_exams_paginated(db=db, page=page)
+    exams_from_db = get_all_exams_paginated(db=db, page=page)
+    return [
+        ExamPublicList(
+            exam_id=exam.exam_id,
+            exam_title=exam.exam_title,
+            datetime_uploaded=exam.datetime_uploaded
+        ) for exam in exams_from_db
+    ]
 
 
 @app.get("/pariksha/{exam_id}", response_model=ExamPublic)

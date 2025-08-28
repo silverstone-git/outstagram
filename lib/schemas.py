@@ -162,6 +162,7 @@ class ExamPublic(BaseModel):
 class ExamPublicList(BaseModel):
     exam_id: str
     exam_title: str
+    datetime_uploaded: datetime
 
 
 

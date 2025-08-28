@@ -159,3 +159,9 @@ class ExamPublic(BaseModel):
     exam_json_str: str
 
 
+class ExamPublicList(BaseModel):
+    exam_id: str
+    exam_title: str
+
+
+

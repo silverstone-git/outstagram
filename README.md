@@ -263,11 +263,13 @@ curl -X POST \
   http://localhost:8000/pariksha
 ```
 
-- for getting all exams
+- for getting all exams (paginated)
 
 ```bash
-curl http://localhost:8000/pariksha
+curl http://localhost:8000/pariksha?page=1
 ```
+
+**Note:** The `/pariksha` endpoint is paginated and returns a list of exams without the `exam_json_str` field. To get the full exam details, use the endpoint below.
 
 - for getting a specific exam
 

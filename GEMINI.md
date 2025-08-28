@@ -27,6 +27,7 @@ The project is organized into the following key directories:
     - `comments.py`: Adding and retrieving comments on posts.
     - `frienship.py`: (Note the typo in the filename) Managing follow requests and friendships.
     - `users.py`: Fetching user profiles, dashboards, and user-specific posts.
+    - `exams.py`: Retrieving paginated exam listings.
 - `alembic/`: Manages database migrations.
 - `main.py`: The main entry point of the FastAPI application, defining all the API endpoints.
 
@@ -71,8 +72,8 @@ The project is organized into the following key directories:
     - It accepts an `exam_title` and `exam_json_str` in the request body.
     - A new `Exam` object is created with a unique `exam_id` (UUID) and saved to the database.
 2.  **Retrieving Exams:**
-    - `GET /pariksha`: Returns a list of all exams.
-    - `GET /pariksha/{exam_id}`: Returns a specific exam by its ID.
+    - `GET /pariksha`: Returns a paginated list of all exams. The `page` query parameter can be used to navigate through pages (e.g., `/pariksha?page=2`). This endpoint returns a summary of each exam, excluding the detailed `exam_json_str`.
+    - `GET /pariksha/{exam_id}`: Returns a specific exam by its ID, including the `exam_json_str`.
 
 ### 4.5. Data Models and Schemas
 
@@ -149,3 +150,11 @@ When testing the `POST /pariksha` endpoint, there were issues with correctly for
     curl -X POST -H "Content-Type: application/json" -d '{"exam_title": "Finals", "exam_json_str": "{\"subject\": \"Science\", \"marks\": 95}"}' http://localhost:8000/pariksha
     ```
 -   **Why it worked:** The outer payload is enclosed in single quotes (`'`). The keys and string values within the JSON are enclosed in double quotes (`"`). The nested JSON string for `exam_json_str` also uses double quotes, which need to be escaped with a backslash (`\`) so they are treated as literal characters within the string.
+
+### 7.3. Python Import Issues
+
+During development, a `ModuleNotFoundError` occurred when running the application in Docker. The error, `No module named 'app.src.lib'`, originated from an incorrect relative import in the newly created `src/repository/exams.py` file.
+
+-   **The Problem:** The import statement `from ..lib.models import Exam` was attempting to traverse up two directories from `exams.py` to find the `lib` directory. However, because of how the application was structured and run within the Docker container, this path was incorrect.
+
+-   **The Solution:** The import path was corrected to `from ...lib.models import Exam`. This change adjusted the relative path to correctly locate the `lib` directory from within the `src` module, resolving the `ModuleNotFoundError` and allowing the application to start successfully.

@@ -2,19 +2,21 @@ from fastapi import FastAPI, Depends, HTTPException, status, Query
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from .lib.database_connection import SessionLocal, engine
-from .lib.schemas import UserSchema, PostSchema, PostCommentSchema, UserPublic, PostPublic, PostCreate, CommentCreate, PostLikeUseful, FollowRequestUseful, UserProfileSchema, ExamCreate, ExamPublic
+from .lib.schemas import UserSchema, PostSchema, PostCommentSchema, UserPublic, PostPublic, PostCreate, CommentCreate, PostLikeUseful, FollowRequestUseful, UserProfileSchema, ExamCreate, ExamPublic, ExamPublicList
 from .lib.models import PostLike, User, Post, PostComment, PostCategory, Friendship, Exam
 from .src.repository.auth import create_user, authenticate_user, create_access_token, authorize
 from .src.repository.posts import create_post, get_post, update_post, delete_post, like_post_repo, get_likes, get_feed_repo
 from .src.repository.comments import add_comment_repo, get_comments
 from .src.repository.users import get_dashboard, get_user_posts_repo, get_user_profile_repo
 from .src.repository.frienship import send_follow_request, request_approve_repo, get_follow_requests
+from .src.repository.exams import get_all_exams_paginated
 from typing import List, Optional, Annotated
 from uuid import uuid4
 
 from sqlmodel import SQLModel
 
 app = FastAPI()
+
 
 # Create the database tables
 SQLModel.metadata.create_all(engine)
@@ -209,9 +211,9 @@ async def create_exam(exam_data: ExamCreate, db: Session = Depends(get_db)):
     return new_exam
 
 
-@app.get("/pariksha", response_model=List[ExamPublic])
-async def get_all_exams(db: Session = Depends(get_db)):
-    return db.query(Exam).all()
+@app.get("/pariksha", response_model=List[ExamPublicList])
+async def get_all_exams(page: int = 1, db: Session = Depends(get_db)):
+    return get_all_exams_paginated(db=db, page=page)
 
 
 @app.get("/pariksha/{exam_id}", response_model=ExamPublic)

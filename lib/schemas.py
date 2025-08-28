@@ -5,7 +5,7 @@ from typing import List, Optional
 from pydantic import BaseModel, EmailStr
 
 from .models import (
-    FollowRequest, FollowRequestStatus, Friendship, MediaURL, Post, PostCategory, PostComment, PostLike, User
+    FollowRequest, FollowRequestStatus, Friendship, MediaURL, Post, PostCategory, PostComment, PostLike, User, Exam
 )
 
 
@@ -146,5 +146,16 @@ class PostUpdateSchema(BaseModel):
 
 class PostCommentUpdateSchema(BaseModel):
     content: Optional[str]
+
+
+class ExamCreate(BaseModel):
+    exam_title: str
+    exam_json_str: str
+
+
+class ExamPublic(BaseModel):
+    exam_id: str
+    exam_title: str
+    exam_json_str: str
 
 

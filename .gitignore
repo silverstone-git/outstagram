@@ -1,7 +1,6 @@
 query_payload
 tdl.txt
 .env.production
-alembic.ini
 __pycache__/
 alembic/__pycache__/
 lib/__pycache__/

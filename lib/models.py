@@ -164,3 +164,9 @@ class Friendship(SQLModel, table=True):
     being_followed: int = Field(default= None)
     datetime_friended: datetime = Field(default_factory=datetime.utcnow)
 
+
+class Exam(SQLModel, table=True):
+    exam_id: str = Field(primary_key=True)
+    exam_title: str = Field(nullable=False)
+    exam_json_str: str = Field(nullable=False)
+

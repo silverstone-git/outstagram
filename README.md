@@ -1,6 +1,6 @@
 # Outstagram
 
-A fastapi server for social media frontends to connect to
+A fastapi server for social media frontends to connect to. Outstagram helps users maintain a healthy balance of social life and student life by allowing them to submit their exam results, compare with their friends, and grow together as a group.
 
 
 ## Installation
@@ -75,6 +75,7 @@ docker-compose up -d
 - post
 - post_comment
 - media_url
+- exam
 
 
 
@@ -247,4 +248,29 @@ curl "http://localhost:8000/feed?page={PAGE_NUMBER}&category={YOUR_POST_CATEGORY
  -H "Authorization: Bearer YOUR_BEARER_TOKEN" \
  -H "Content-Type: application/json"
 
+```
+
+- for creating an exam
+
+```bash
+curl -X POST \
+  -H "Content-Type: application/json" \
+  -d 
+  '{
+    "exam_title": "YOUR_EXAM_TITLE",
+    "exam_json_str": "{\"subject\": \"Maths\", \"marks\": 100}"
+  }' \
+  http://localhost:8000/pariksha
+```
+
+- for getting all exams
+
+```bash
+curl http://localhost:8000/pariksha
+```
+
+- for getting a specific exam
+
+```bash
+curl http://localhost:8000/pariksha/{YOUR_EXAM_ID}
 ```

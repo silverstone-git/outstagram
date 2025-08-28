@@ -2,14 +2,15 @@ from fastapi import FastAPI, Depends, HTTPException, status, Query
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from .lib.database_connection import SessionLocal, engine
-from .lib.schemas import UserSchema, PostSchema, PostCommentSchema, UserPublic, PostPublic, PostCreate, CommentCreate, PostLikeUseful, FollowRequestUseful, UserProfileSchema
-from .lib.models import PostLike, User, Post, PostComment, PostCategory, Friendship
+from .lib.schemas import UserSchema, PostSchema, PostCommentSchema, UserPublic, PostPublic, PostCreate, CommentCreate, PostLikeUseful, FollowRequestUseful, UserProfileSchema, ExamCreate, ExamPublic
+from .lib.models import PostLike, User, Post, PostComment, PostCategory, Friendship, Exam
 from .src.repository.auth import create_user, authenticate_user, create_access_token, authorize
 from .src.repository.posts import create_post, get_post, update_post, delete_post, like_post_repo, get_likes, get_feed_repo
 from .src.repository.comments import add_comment_repo, get_comments
 from .src.repository.users import get_dashboard, get_user_posts_repo, get_user_profile_repo
 from .src.repository.frienship import send_follow_request, request_approve_repo, get_follow_requests
 from typing import List, Optional, Annotated
+from uuid import uuid4
 
 from sqlmodel import SQLModel
 
@@ -197,4 +198,26 @@ async def get_feed(
 ):
 
     return get_feed_repo(page=page, category=category, current_user=current_user, db=db)
+
+
+@app.post("/pariksha", response_model=ExamPublic, status_code=status.HTTP_201_CREATED)
+async def create_exam(exam_data: ExamCreate, db: Session = Depends(get_db)):
+    new_exam = Exam(exam_id=str(uuid4()), exam_title=exam_data.exam_title, exam_json_str=exam_data.exam_json_str)
+    db.add(new_exam)
+    db.commit()
+    db.refresh(new_exam)
+    return new_exam
+
+
+@app.get("/pariksha", response_model=List[ExamPublic])
+async def get_all_exams(db: Session = Depends(get_db)):
+    return db.query(Exam).all()
+
+
+@app.get("/pariksha/{exam_id}", response_model=ExamPublic)
+async def get_exam_by_id(exam_id: str, db: Session = Depends(get_db)):
+    exam = db.query(Exam).filter(Exam.exam_id == exam_id).first()
+    if not exam:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Exam not found")
+    return exam
 

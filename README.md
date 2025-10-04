@@ -30,6 +30,9 @@ Install using `pip install -r requirements.txt`
 ### Run-time, variable, JWT Secret key
 - OUTSTAGRAM_SECRET_KEY
 
+### For CORS
+- OUTSTAGRAM_ALLOWED_ORIGIN
+
 ### Build-time variables, for the docker building / fetching
 - DOCKER_USERNAME=cyt0
 - LATEST_TAG=latest

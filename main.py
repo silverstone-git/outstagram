@@ -13,6 +13,7 @@ from .src.repository.frienship import send_follow_request, request_approve_repo,
 from .src.repository.exams import get_all_exams_paginated
 from typing import List, Optional, Annotated
 from uuid import uuid4
+from os import getenv
 
 from sqlmodel import SQLModel
 
@@ -21,8 +22,7 @@ app = FastAPI()
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost", "http://localhost:3000", "http://localhost:5173"],
-    allow_origin_regex=r"https://.*\.aryan\.cfd",
+    allow_origins=[getenv("OUTSTAGRAM_ALLOWED_ORIGIN", "http://localhost:5173")],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

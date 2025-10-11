@@ -22,7 +22,7 @@ app = FastAPI()
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[getenv("OUTSTAGRAM_ALLOWED_ORIGIN", "http://localhost:5173")],
+    allow_origins=[getenv("OUTSTAGRAM_ALLOWED_ORIGIN_1", "http://localhost:5173"), getenv("OUTSTAGRAM_ALLOWED_ORIGIN_2", "http://localhost:3000")],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

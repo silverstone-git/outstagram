@@ -31,7 +31,8 @@ Install using `pip install -r requirements.txt`
 - OUTSTAGRAM_SECRET_KEY
 
 ### For CORS
-- OUTSTAGRAM_ALLOWED_ORIGIN
+- OUTSTAGRAM_ALLOWED_ORIGIN_1
+- OUTSTAGRAM_ALLOWED_ORIGIN_2
 
 ### Build-time variables, for the docker building / fetching
 - DOCKER_USERNAME=cyt0

@@ -13,6 +13,7 @@ services:
       - OUTSTAGRAM_DBHOST=${OUTSTAGRAM_DBHOST:-dbhostnotset}
       - OUTSTAGRAM_DBNAME=${OUTSTAGRAM_DBNAME:-dbnamenotset}
       - OUTSTAGRAM_USERNAME=${OUTSTAGRAM_USERNAME:-unamenotset}
-      - OUTSTAGRAM_ALLOWED_ORIGIN=${OUTSTAGRAM_ALLOWED_ORIGIN:-allowedoriginenvnotset}
+      - OUTSTAGRAM_ALLOWED_ORIGIN_1=${OUTSTAGRAM_ALLOWED_ORIGIN_1:-allowedorigin1envnotset}
+      - OUTSTAGRAM_ALLOWED_ORIGIN_2=${OUTSTAGRAM_ALLOWED_ORIGIN_2:-allowedorigin2envnotset}
     env_file:
       - .env.production

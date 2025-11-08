@@ -35,3 +35,7 @@ class InvalidCategory(HTTPException):
     def __init__(self, detail: str = "This category input is invalid"):
         super().__init__(status_code=status.HTTP_400_BAD_REQUEST, detail=detail)
 
+class CouldntInitS3(HTTPException):
+    def __init__(self, detail: str = "We couldnt get the media for this post"):
+        super().__init__(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=detail)
+

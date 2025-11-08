@@ -15,5 +15,11 @@ services:
       - OUTSTAGRAM_USERNAME=${OUTSTAGRAM_USERNAME:-unamenotset}
       - OUTSTAGRAM_ALLOWED_ORIGIN_1=${OUTSTAGRAM_ALLOWED_ORIGIN_1:-allowedorigin1envnotset}
       - OUTSTAGRAM_ALLOWED_ORIGIN_2=${OUTSTAGRAM_ALLOWED_ORIGIN_2:-allowedorigin2envnotset}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-awsaccesskeyenvnotset}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-awssecretaccesskeyenvnotset}
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-awsdefaultregionenvnotset}
+      - S3_BUCKET=${S3_BUCKET:-s3bucketenvnotset}
+      - S3_ENDPOINT=${S3_ENDPOINT:-s3endpointenvnotset}
+      - S3_REGION=${S3_REGION:-s3regionenvnotset}
     env_file:
       - .env.production

@@ -1,6 +1,9 @@
 from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import or_, and_
 from sqlmodel import select, func, and_, join, outerjoin
+
+import datetime
+
 from ...lib.models import Post, User, PostLike, MediaURL, FollowRequest
 from ...lib.schemas import UserPublic, PostPublic
 from ...lib.exceptions import CouldntGetDashboard, InvalidPageLength
@@ -13,27 +16,22 @@ def get_dashboard(user: UserPublic, db: Session, page: int):
 
 def get_user_posts_repo(username: str, current_user: UserPublic, db: Session, page: int = 1):
 
-    target_user_id = db.query(User.user_id).filter(User.username == username).first()
-    target_user_id = target_user_id[0]
-    if not target_user_id:
+    target_user_tuple = db.query(User.user_id).filter(User.username == username).first()
+    if not target_user_tuple:
         raise HTTPException(status_code=404, detail="User not found")
+    target_user_id = target_user_tuple[0]
 
     if page < 1:
         raise InvalidPageLength
 
     offset = (page - 1) * USER_POSTS_PAGE_LENGTH
 
-    #print("\n\n\n\ntarget: ", target_user_id)
-    
-
-    """
-    SELECT post.*, GROUP_CONCAT(mediaurl.url) AS media_urls, postlike.datetime_liked AS is_liked FROM post JOIN user ON post.author_user_id = user.user_id LEFT JOIN mediaurl ON post.post_id = mediaurl.post_id LEFT JOIN postlike ON postlike.post_id = post.post_id AND postlike.liker_user_id = user.user_id GROUP BY post.post_id, post.author_user_id, postlike.datetime_liked;
-    """
-
     statement = (
         select(
             Post,
-            func.string_agg(MediaURL.url, ',').label("media_urls"),
+            func.jsonb_agg(
+                func.json_build_object('url', MediaURL.url, 'media_type', MediaURL.media_type)
+            ).filter(MediaURL.post_id.isnot(None)).label("media_urls"),
             PostLike.datetime_liked.label("is_liked"),
         )
         .join(User, Post.author_user_id == User.user_id)
@@ -47,9 +45,30 @@ def get_user_posts_repo(username: str, current_user: UserPublic, db: Session, pa
 
     posts = list(db.execute(statement).all())
 
-    posts = list(map(lambda x: PostPublic(**x[0].model_dump(), author = username, media_urls = x[1].split(','), is_liked = True if x[2] is not None else False), posts))
 
-    #print("posts got: ", posts)
+    def row_to_postpublic(row: tuple) -> PostPublic:
+        data = row[0].model_dump()
+        dt = data.get('datetime_posted')
+        if isinstance(dt, (datetime.datetime, datetime.date)):
+            # ensure datetime is ISO string, include timezone if present
+            if isinstance(dt, datetime.date) and not isinstance(dt, datetime.datetime):
+                # convert date -> datetime at midnight
+                dt = datetime.datetime(dt.year, dt.month, dt.day)
+            data['datetime_posted'] = dt.isoformat()
+
+        media_urls = row[1]
+        is_liked_ts = row[2]
+
+        return PostPublic(
+            **data,
+            author=username,
+            media_urls=media_urls or [],
+            is_liked=(is_liked_ts is not None),
+        )
+
+    posts = list(map(row_to_postpublic, posts))
+
+    # print("posts got: ", posts)
 
     return posts
 

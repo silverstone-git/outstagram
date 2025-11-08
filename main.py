@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, status, Query
+from fastapi import FastAPI, Depends, HTTPException, status, Query, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
@@ -6,11 +6,12 @@ from .lib.database_connection import SessionLocal, engine
 from .lib.schemas import UserSchema, PostSchema, PostCommentSchema, UserPublic, PostPublic, PostCreate, CommentCreate, PostLikeUseful, FollowRequestUseful, UserProfileSchema, ExamCreate, ExamPublic, ExamPublicList
 from .lib.models import PostLike, User, Post, PostComment, PostCategory, Friendship, Exam
 from .src.repository.auth import create_user, authenticate_user, create_access_token, authorize
-from .src.repository.posts import create_post, get_post, update_post, delete_post, like_post_repo, get_likes, get_feed_repo
+from .src.repository.posts import create_post, get_post, update_post, delete_post, like_post_repo, unlike_post_repo, get_likes, get_feed_repo
 from .src.repository.comments import add_comment_repo, get_comments
 from .src.repository.users import get_dashboard, get_user_posts_repo, get_user_profile_repo
 from .src.repository.frienship import send_follow_request, request_approve_repo, get_follow_requests
 from .src.repository.exams import get_all_exams_paginated
+from .src.repository.media import upload_media_to_s3, upload_media_bulk_to_s3
 from typing import List, Optional, Annotated
 from uuid import uuid4
 from os import getenv
@@ -79,6 +80,26 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
     return {"access_token": access_token, "token_type": "bearer", "user": user}
 
 
+# Endpoint to upload a single media file
+@app.post("/media-upload")
+async def upload_media(
+    current_user: UserPublic = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    file: UploadFile = File(...)
+):
+    return upload_media_to_s3(file, db)
+
+
+# Endpoint to upload multiple media files
+@app.post("/media-upload/bulk")
+async def upload_media_bulk(
+    current_user: UserPublic = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    files: List[UploadFile] = File(...)
+):
+    return upload_media_bulk_to_s3(files, db)
+
+
 # Endpoint to create a new post
 @app.post("/posts", response_model=PostPublic)
 async def create_new_post(post: PostCreate, current_user: UserPublic = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -90,8 +111,17 @@ async def create_new_post(post: PostCreate, current_user: UserPublic = Depends(g
 @app.post("/posts/{post_id}/like", response_model=PostLike, status_code=status.HTTP_201_CREATED)
 def like_post(post_id: str, current_user: UserPublic = Depends(get_current_user), db: Session = Depends(get_db)):
 
-    #print("\n\n\n in like post, current user is: ", current_user)
     return like_post_repo(post_id, current_user, db)
+
+
+# Endpoint to unlike a post
+@app.delete("/posts/{post_id}/like", status_code=status.HTTP_204_NO_CONTENT)
+def unlike_post(post_id: str, current_user: UserPublic = Depends(get_current_user), db: Session = Depends(get_db)):
+    success = unlike_post_repo(post_id, current_user, db)
+    if not success:
+        raise HTTPException(status_code=404, detail="Post not liked yet")
+    return
+
 
 
 # Endpoint to comment on a post

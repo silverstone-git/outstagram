@@ -53,11 +53,16 @@ class User(SQLModel, table=True):
 
 
 class PostCategory(str, Enum):
-    tech = "tech"
-    entertainment = "entertainment"
-    business = "business"
-    vlog = "vlog"
-    lifestyle = "lifestyle"
+    tech = "Technology"
+    entertainment = "Entertainment"
+    business = "Business"
+    vlog = "Vlog"
+    lifestyle = "Lifestyle"
+    academic = "Academic"
+    achievement = "Achievement"
+    study_group = "Study Group"
+    exam_result = "Exam Result"
+    project = "Project"
 
 class Post(SQLModel, table=True):
     post_id: str = Field(default=None, primary_key=True)
@@ -87,6 +92,7 @@ class MediaURL(SQLModel, table=True):
 
     post_id: Optional[str] = Field(default=None, foreign_key="post.post_id", primary_key = True, ondelete= "CASCADE")
     url: str = Field(nullable=False, primary_key = True)
+    media_type: str = Field(nullable=False)
 
     post: Post = Relationship(
         back_populates="media_urls",

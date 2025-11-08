@@ -50,6 +50,11 @@ class MediaURLSchema(BaseModel):
     media_type: str
 
 
+class MediaURLCreateSchema(BaseModel):
+    url: str
+    media_type: str
+
+
 class PostLikeSchema(BaseModel):
     post_id: str
     liker: UserSchema
@@ -87,7 +92,7 @@ class CommentCreate(BaseModel):
 
 
 class PostCreate(BaseModel):
-    media_urls: List[MediaURLSchema]
+    media_urls: List[MediaURLCreateSchema]
     highlighted_by_author: bool
     caption: str
     post_category: PostCategory

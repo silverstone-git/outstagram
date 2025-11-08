@@ -15,12 +15,13 @@ Outstagram is a social media application backend built with FastAPI. It provides
 - **API Schema Validation:** Pydantic
 - **Containerization:** Docker, Docker Compose
 - **Database Migrations:** Alembic
+- **Cloud Storage:** AWS S3 for media uploads
 
 ## 3. Project Structure
 
 The project is organized into the following key directories:
 
-- `lib/`: Contains the core application logic, including database models (`models.py`), Pydantic schemas (`schemas.py`), database connection setup (`database_connection.py`), custom exceptions (`exceptions.py`), and constants (`constants.py`).
+- `lib/`: Contains the core application logic, including database models (`models.py`), Pydantic schemas (`schemas.py`), database connection setup (`database_connection.py`), custom exceptions (`exceptions.py`), constants (`constants.py`), and the S3 client manager (`s3_client.py`).
 - `src/repository/`: This directory holds the data access layer, with separate modules for handling different parts of the application:
     - `auth.py`: User registration, login, and JWT token management.
     - `posts.py`: Creating, retrieving, updating, deleting, and liking posts.
@@ -28,6 +29,7 @@ The project is organized into the following key directories:
     - `frienship.py`: (Note the typo in the filename) Managing follow requests and friendships.
     - `users.py`: Fetching user profiles, dashboards, and user-specific posts.
     - `exams.py`: Retrieving paginated exam listings.
+    - `media.py`: Handles media uploads to S3.
 - `alembic/`: Manages database migrations.
 - `main.py`: The main entry point of the FastAPI application, defining all the API endpoints.
 
@@ -50,13 +52,34 @@ The project is organized into the following key directories:
 
 1.  **Creating a Post (`/posts`):**
     - The `create_post` function in `src/repository/posts.py` is called.
-    - It creates a new `Post` object and associated `MediaURL` objects, saving them to the database.
-2.  **Liking a Post (`/posts/{post_id}/like`):**
-    - The `like_post_repo` function in `src/repository/posts.py` handles liking and unliking a post.
-3.  **Commenting on a Post (`/posts/{post_id}/comment`):**
+    - It accepts a payload containing `caption`, `post_category`, and a list of `media_urls`, where each media object includes a `url` and `media_type`.
+    - A new `Post` object is created, and for each media URL provided, a corresponding `MediaURL` object is created and linked to the new post.
+    - This resolves a previous issue where the API incorrectly required a `post_id` for media URLs during post creation.
+2.  **Liking a Post (`POST /posts/{post_id}/like`):**
+    - The `like_post_repo` function in `src/repository/posts.py` handles liking a post.
+3.  **Unliking a Post (`DELETE /posts/{post_id}/like`):**
+    - The `unlike_post_repo` function in `src/repository/posts.py` handles unliking a post.
+4.  **Commenting on a Post (`/posts/{post_id}/comment`):**
     - The `add_comment_repo` function in `src/repository/comments.py` adds a new comment to a post.
+5.  **Retrieving a Post (`/posts/{post_id}`):**
+    - The `get_post` function in `src/repository/posts.py` now includes logic to refresh S3 presigned URLs. If a URL is older than 7 days, a new one is generated, the database is updated, and the refreshed URL is returned to the client.
 
-### 4.3. Social Features
+### 4.3. Media Uploads
+
+1.  **S3 Integration:**
+    - The project uses the `boto3` library to interact with AWS S3.
+    - A singleton `S3ClientManager` class in `lib/s3_client.py` manages the S3 client, ensuring a single, secure instance.
+    - S3 configuration is managed through environment variables: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_DEFAULT_REGION`, `S3_BUCKET`, `S3_ENDPOINT`.
+2.  **Single File Upload (`/media-upload`):**
+    - The `POST /media-upload` endpoint accepts a single media file (image, video, or audio).
+    - The file is uploaded to the configured S3 bucket with a unique object key: `outstagram/UNIX_UTC_TIMESTAMP-UUID.extension`.
+    - The endpoint returns the object key and a presigned URL with a 7-day validity.
+3.  **Bulk File Upload (`/media-upload/bulk`):**
+    - The `POST /media-upload/bulk` endpoint accepts multiple media files.
+    - Each file is processed and uploaded to S3, similar to the single file upload.
+    - The endpoint returns a list of objects, each containing the object key and presigned URL for one of the uploaded files.
+
+### 4.4. Social Features
 
 1.  **Following a User (`/users/{username}/follow`):**
     - The `send_follow_request` function in `src/repository/frienship.py` creates a new `FollowRequest` with a "pending" status.
@@ -64,8 +87,11 @@ The project is organized into the following key directories:
     - The `request_approve_repo` function in `src/repository/frienship.py` updates the `FollowRequest` status to "accepted" and creates a `Friendship` record.
 3.  **Fetching the Feed (`/feed`):**
     - The `get_feed_repo` function in `src/repository/posts.py` retrieves posts from users that the current user follows, in reverse chronological order.
+4.  **Fetching User Posts (`/users/{username}/posts/{page}`):**
+    - The `get_user_posts_repo` function in `src/repository/users.py` retrieves a paginated list of posts for a specific user.
+    - This was recently refactored to improve performance and code quality. Instead of aggregating media URLs into a comma-separated string and parsing it in Python, the query now uses PostgreSQL's `jsonb_agg` and `json_build_object` functions. This allows the API to directly return a structured list of media objects (`{url, media_type}`), making the process more efficient and robust.
 
-### 4.4. Exams
+### 4.5. Exams
 
 1.  **Creating an Exam (`/pariksha`):**
     - The `POST /pariksha` endpoint allows users to submit exam results.
@@ -75,10 +101,10 @@ The project is organized into the following key directories:
     - `GET /pariksha`: Returns a paginated list of all exams. The `page` query parameter can be used to navigate through pages (e.g., `/pariksha?page=2`). This endpoint returns a summary of each exam, excluding the detailed `exam_json_str`.
     - `GET /pariksha/{exam_id}`: Returns a specific exam by its ID, including the `exam_json_str`.
 
-### 4.5. Data Models and Schemas
+### 4.6. Data Models and Schemas
 
-- **`lib/models.py`:** Defines the SQLAlchemy models for `User`, `Post`, `PostComment`, `PostLike`, `MediaURL`, `FollowRequest`, `Friendship`, and `Exam`. These models map to the database tables.
-- **`lib/schemas.py`:** Defines the Pantic schemas used for API request and response validation. This ensures that the data exchanged with the API conforms to the expected structure. This includes schemas like `UserSchema`, `PostSchema`, and `ExamSchema`.
+- **`lib/models.py`:** Defines the SQLAlchemy models for `User`, `Post`, `PostComment`, `PostLike`, `MediaURL`, `FollowRequest`, `Friendship`, and `Exam`. These models map to the database tables. The `MediaURL` model now includes a `media_type` field to store the type of media (e.g., 'image', 'video').
+- **`lib/schemas.py`:** Defines the Pantic schemas used for API request and response validation. This ensures that the data exchanged with the API conforms to the expected structure. This includes schemas like `UserSchema`, `PostSchema`, and `ExamSchema`. To fix a validation issue during post creation, a `MediaURLCreateSchema` was introduced, which omits the `post_id`. The `PostCreate` schema now uses this new schema for its `media_urls` field.
 
 ## 5. Database
 
@@ -88,7 +114,7 @@ The `outstagram.sql` file contains the PostgreSQL database schema. The database 
 - `post`: Stores post details.
 - `postcomment`: Stores comments on posts.
 - `postlike`: Stores likes on posts.
-- `mediaurl`: Stores URLs for media associated with posts.
+- `mediaurl`: Stores URLs and media types for media associated with posts.
 - `followrequest`: Manages follow requests between users.
 - `friendship`: Represents the follower/following relationship.
 - `exam`: Stores exam information, including a title and a JSON string with exam details.
@@ -110,7 +136,7 @@ This section documents some of the challenges and solutions encountered during t
 
 ### 7.1. Database Migrations with Alembic
 
-The process of adding the `Exam` table and modifying it involved several steps and troubleshooting.
+The process of adding and modifying tables involved several steps and troubleshooting.
 
 1.  **Initial Setup:** The project was missing an `alembic.ini` file. A new one was created, but it couldn't expand environment variables for the `sqlalchemy.url`. The solution was to modify `alembic/env.py` to read the environment variables and programmatically set the database URL.
 
@@ -121,12 +147,17 @@ The process of adding the `Exam` table and modifying it involved several steps a
     sys.path.append(str(Path(__file__).resolve().parents[1]))
     ```
 
-3.  **`NameError` in Migration File:** When auto-generating the migration for the `Exam` table, the resulting migration script was missing the `import sqlmodel` statement, causing a `NameError`. This was fixed by manually adding the import to the migration file (`alembic/versions/0b590aee64c6_add_exam_title_to_exams_table.py`).
+3.  **`NameError` in Migration File:** When auto-generating a migration, the resulting script was sometimes missing the `import sqlmodel` statement, causing a `NameError`. This was fixed by manually adding the import to the migration file.
 
-4.  **`IntegrityError` on Upgrade:** When adding the non-nullable `exam_title` column to the existing `exam` table (which already had data), the migration failed with an `IntegrityError` because the existing rows would have null values. The solution was to add a `server_default` value to the column definition in the migration script:
-    ```python
-    op.add_column('exam', sa.Column('exam_title', sqlmodel.sql.sqltypes.AutoString(), nullable=False, server_default='default_title'))
-    ```
+4.  **`IntegrityError` on Upgrade:** When adding a non-nullable column to an existing table with data, the migration can fail with an `IntegrityError`.
+    - When adding `exam_title` to the `exam` table, the solution was to add a `server_default` value in the migration script:
+        ```python
+        op.add_column('exam', sa.Column('exam_title', sqlmodel.sql.sqltypes.AutoString(), nullable=False, server_default='default_title'))
+        ```
+    - Similarly, when adding the non-nullable `media_type` column to the `mediaurl` table, the migration failed because existing rows would have null values. A `server_default` of `'image'` was added to handle existing records:
+        ```python
+        op.add_column('mediaurl', sa.Column('media_type', sqlmodel.sql.sqltypes.AutoString(), nullable=False, server_default='image'))
+        ```
 
 **Correct Migration Process:**
 
@@ -183,4 +214,17 @@ During development, a `ModuleNotFoundError` occurred when running the applicatio
 -   **The Problem:** The import statement `from ..lib.models import Exam` was attempting to traverse up two directories from `exams.py` to find the `lib` directory. However, because of how the application was structured and run within the Docker container, this path was incorrect.
 
 -   **The Solution:** The import path was corrected to `from ...lib.models import Exam`. This change adjusted the relative path to correctly locate the `lib` directory from within the `src` module, resolving the `ModuleNotFoundError` and allowing the application to start successfully.
+
+### 7.5. Refactoring Media URL Retrieval
+
+-   **The Problem:** In the `get_user_posts_repo` function, media URLs associated with a post were being fetched using `string_agg` in PostgreSQL, which concatenated them into a single comma-separated string. This string was then parsed in the Python backend to reconstruct the list of URLs. This approach was inefficient and brittle, as it didn't account for the `media_type` and relied on string manipulation for data retrieval.
+
+-   **The Solution:** The query was refactored to use PostgreSQL's native JSON functions. By using `jsonb_agg(json_build_object('url', MediaURL.url, 'media_type', MediaURL.media_type))`, the database now directly constructs a JSON array of media objects. This eliminates the need for string parsing in the backend, resulting in a cleaner, more efficient, and less error-prone implementation. The API now receives a properly structured list of media objects directly from the database.
+
+### 7.6. Post Creation `post_id` Validation Error
+
+-   **The Problem:** When creating a new post, the API was returning a validation error indicating that the `post_id` field was required for each of the `media_urls`. This was a "chicken-and-egg" problem, as the `post_id` could not be known before the post was created.
+
+-   **The Solution:** The issue was resolved by introducing a new Pydantic schema, `MediaURLCreateSchema`, which includes only the `url` and `media_type` fields. The `PostCreate` schema was updated to use a list of `MediaURLCreateSchema` objects for the `media_urls` field. This change ensures that the API payload for creating a post does not require a `post_id`, aligning the validation logic with the data available at the time of creation. The `create_post` function in the repository was also updated to handle the new schema, correctly associating the media URLs with the newly created post.
+
 

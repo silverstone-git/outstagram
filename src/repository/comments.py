@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import select
-from ...lib.schemas import PostCommentSchema, UserPublic
+from ...lib.schemas import UserPublic
 from ...lib.models import PostComment
 from ...lib.exceptions import ProblemCommenting, CouldntGetComments, InvalidPageLength
 from ...lib.constants import COMMENT_PAGE_LENGTH

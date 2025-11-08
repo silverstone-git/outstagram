@@ -34,6 +34,14 @@ Install using `pip install -r requirements.txt`
 - OUTSTAGRAM_ALLOWED_ORIGIN_1
 - OUTSTAGRAM_ALLOWED_ORIGIN_2
 
+### For S3
+- AWS_ACCESS_KEY_ID
+- AWS_SECRET_ACCESS_KEY
+- AWS_DEFAULT_REGION
+- S3_BUCKET
+- S3_ENDPOINT
+- S3_REGION
+
 ### Build-time variables, for the docker building / fetching
 - DOCKER_USERNAME=cyt0
 - LATEST_TAG=latest
@@ -78,7 +86,7 @@ docker-compose up -d
 - user
 - post
 - post_comment
-- media_url
+- media_url (url, media_type)
 - exam
 
 
@@ -133,6 +141,15 @@ http://localhost:8000/posts \
 ```bash
 
 curl -X POST \
+    http://localhost:8000/posts/{YOUR_POST_ID}/like \
+     -H "Authorization: Bearer YOUR_BEARER_TOKEN" \
+     -H "Content-Type: application/json"
+```
+
+- for unliking
+```bash
+
+curl -X DELETE \
     http://localhost:8000/posts/{YOUR_POST_ID}/like \
      -H "Authorization: Bearer YOUR_BEARER_TOKEN" \
      -H "Content-Type: application/json"

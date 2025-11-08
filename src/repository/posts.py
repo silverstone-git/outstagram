@@ -1,15 +1,19 @@
 
 from sqlalchemy.orm import Session, joinedload, selectinload
-from sqlmodel import select, func, and_, join, outerjoin, case, exists, delete, desc
-from sqlalchemy.exc import IntegrityError
+from sqlmodel import select, func, and_, exists, desc
 from ...lib.models import Post, User, MediaURL, PostLike, PostCategory, FollowRequest
 from ...lib.schemas import Post, PostPublic, UserPublic, PostCreate
-from ...lib.exceptions import AlreadyLiked, CouldntGetLikes, InvalidPageLength, PostNotFound, InvalidCategory
+from ...lib.exceptions import CouldntGetLikes, InvalidPageLength, PostNotFound, InvalidCategory
 from ...lib.constants import LIKE_PAGE_LENGTH, FEED_PAGE_LENGTH
+from ...lib.s3_client import S3ClientManager
 from uuid import uuid4
-from datetime import datetime
+from datetime import datetime, timedelta, timezone, date
 from typing import List
 from uuid import uuid4
+
+s3_manager = S3ClientManager()
+s3_client = s3_manager.get_client()
+s3_bucket = s3_manager.get_bucket()
 
 def is_valid_category(category_str: str) -> bool:
     try:
@@ -23,43 +27,33 @@ def create_post(db: Session, post: PostCreate, author_user_id: int, author_usern
 
     post_id_formulated = uuid4()
 
-    """
-    print("\n\n\npost is: : ")
-    print(post)
-    """
-
     media_url_objects = []
     for media_url in post.media_urls:
-        media_url_object = MediaURL(post_id = str(post_id_formulated), url = media_url.url, media_type= media_url.media_type)
+        media_url_object = MediaURL(post_id=str(post_id_formulated), url=media_url.url, media_type=media_url.media_type)
         media_url_objects.append(media_url_object)
         db.add(media_url_object)
 
-    # Create a new Post instance
     new_post = Post(
         post_id=str(post_id_formulated),
-        caption=post.caption,  # Assign caption from the request
-        post_category=post.post_category,  # Assign post category from the request
-        author_user_id=int(author_user_id),  # Set the author user ID
+        caption=post.caption,
+        post_category=post.post_category,
+        author_user_id=int(author_user_id),
     )
     
-    # Add the new post to the session and commit to the database
     db.add(new_post)
     db.commit()
-    db.refresh(new_post)  # Refresh the instance to get the latest data from the database
-
-    #print("\n\n\ndb operations done\n\n\n")
+    db.refresh(new_post)
     
     return PostPublic(
         post_id=str(new_post.post_id),
         caption=new_post.caption,
         post_category=new_post.post_category,
         datetime_posted=new_post.datetime_posted.isoformat(),
-        author_user_id=0 if new_post.author_user_id == None  else new_post.author_user_id,
-        author = author_username,
-        highlighted_by_author = new_post.highlighted_by_author,
-        media_urls = list(map(lambda x: MediaURL(**x.model_dump(exclude= {'post_id'}), post_id= new_post.post_id), post.media_urls)),
-        # abhi abhi bani h toh liked kese hogi
-        is_liked = False
+        author_user_id=new_post.author_user_id or 0,
+        author=author_username,
+        highlighted_by_author=new_post.highlighted_by_author,
+        media_urls=media_url_objects,
+        is_liked=False
     )
 
 # Function to retrieve a post by its ID
@@ -92,32 +86,80 @@ def get_post(post_id: str, current_user: UserPublic, db: Session) -> PostPublic:
     if post is None:
         raise PostNotFound
     
+    refreshed_media_urls = []
+    for media in post.media_urls:
+        try:
+            # Extract object key from URL
+            object_key = media.url.split(s3_bucket)[1].split('?')[0][1:]
+            
+            # Extract timestamp from object key
+            timestamp_str = object_key.split('-')[0]
+            creation_time = datetime.fromtimestamp(int(timestamp_str))
+
+            # Check if the URL is older than 7 days
+            if datetime.now(timezone.utc) - creation_time > timedelta(days=7):
+                # Generate new presigned URL
+                new_presigned_url = s3_client.generate_presigned_url(
+                    'get_object',
+                    Params={'Bucket': s3_bucket, 'Key': object_key},
+                    ExpiresIn=604800  # 7 days
+                )
+                
+                # Update the database
+                media.url = new_presigned_url
+                db.add(media)
+                db.commit()
+                db.refresh(media)
+                refreshed_media_urls.append(media)
+            else:
+                refreshed_media_urls.append(media)
+        except Exception as e:
+            # if parsing fails, just append the original url
+            refreshed_media_urls.append(media)
+
+
+    dt= post.datetime_posted
+    if isinstance(dt, (datetime, date)):
+        # ensure datetime is ISO string, include timezone if present
+        if isinstance(dt, date) and not isinstance(dt, datetime):
+            # convert date -> datetime at midnight
+            dt = datetime(dt.year, dt.month, dt.day)
+        post.datetime_posted= dt.isoformat()
+
+
     return PostPublic(
         **post.model_dump(),
         is_liked = is_liked,
         author= post.author.username,
-        media_urls = post.media_urls
+        media_urls = refreshed_media_urls
     )
 
 
-def like_post_repo(post_id: str, liker: UserPublic, db: Session):
+def like_post_repo(post_id: str, liker: UserPublic, db: Session) -> PostLike:
     # like a post and return a PostLike
 
     post_like_existing = db.get(PostLike, (post_id, liker.user_id))
-    print("\n\npost like existing: ", post_like_existing)
 
     if not post_like_existing:
-        postLike = PostLike(post_id = post_id, liker_user_id = liker.user_id)
+        postLike = PostLike(post_id=post_id, liker_user_id=liker.user_id)
         db.add(postLike)
         db.commit()
-        db.refresh(postLike)  # Refresh the instance to get the latest data from the database
+        db.refresh(postLike)
         return postLike
-    else:
-        statement = delete(PostLike).where(and_(PostLike.liker_user_id == liker.user_id, PostLike.post_id == post_id))
-        db.execute(statement)
+    
+    return post_like_existing
+
+
+def unlike_post_repo(post_id: str, liker: UserPublic, db: Session) -> bool:
+    # unlike a post
+    post_like = db.get(PostLike, (post_id, liker.user_id))
+
+    if post_like:
+        db.delete(post_like)
         db.commit()
-        print("\n\nUnliked\n\n")
-        return PostLike(post_id = '', liker_user_id = 0)
+        return True
+    
+    return False
 
 
 def get_likes(post_id: str, db: Session, page: int):

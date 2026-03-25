@@ -2,6 +2,7 @@ from datetime import date, datetime
 from enum import Enum
 from typing import List, Optional
 from sqlmodel import Field, Relationship, SQLModel, create_engine, select
+from sqlalchemy import Column, JSON
 
 
 class User(SQLModel, table=True):
@@ -176,4 +177,52 @@ class Exam(SQLModel, table=True):
     exam_title: str = Field(nullable=False)
     exam_json_str: str = Field(nullable=False)
     datetime_uploaded: datetime = Field(default_factory=datetime.utcnow)
+    sections: List["ExamSection"] = Relationship(back_populates="exam", cascade_delete=True)
+
+
+class QuestionType(str, Enum):
+    MCQ = "MCQ"
+    MSQ = "MSQ"
+    NAT = "NAT"
+
+
+class Topic(SQLModel, table=True):
+    topic_id: Optional[int] = Field(default=None, primary_key=True)
+    name: str = Field(nullable=False)
+    slug: str = Field(nullable=False, unique=True, index=True)
+    questions: List["Question"] = Relationship(back_populates="topic")
+
+
+class SectionQuestionLink(SQLModel, table=True):
+    section_id: str = Field(foreign_key="examsection.id", primary_key=True)
+    question_id: str = Field(foreign_key="question.id", primary_key=True)
+
+
+class Question(SQLModel, table=True):
+    id: str = Field(primary_key=True)
+    type: QuestionType = Field(nullable=False)
+    question: str = Field(nullable=False)
+    # Options will be a JSON array of dicts: [{label: int, value: str}]
+    options: Optional[List[dict]] = Field(default=None, sa_column=Column(JSON))
+    answer_label: Optional[int] = None
+    answer_labels: Optional[List[int]] = Field(default=None, sa_column=Column(JSON))
+    # answer_range: {min: number, max: number}
+    answer_range: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    answer_value: Optional[str] = None
+    topic_id: int = Field(foreign_key="topic.topic_id")
+    topic: Topic = Relationship(back_populates="questions")
+    explanation: str = Field(nullable=False)
+    image_path: Optional[str] = None
+    sections: List["ExamSection"] = Relationship(back_populates="questions", link_model=SectionQuestionLink)
+
+
+class ExamSection(SQLModel, table=True):
+    id: str = Field(primary_key=True)
+    name: str = Field(nullable=False)
+    exam_id: str = Field(foreign_key="exam.exam_id", ondelete="CASCADE")
+    marking_positive: float = Field(default=1.0)
+    marking_negative: float = Field(default=0.0)
+    max_attempts: Optional[int] = None
+    exam: Exam = Relationship(back_populates="sections")
+    questions: List[Question] = Relationship(back_populates="sections", link_model=SectionQuestionLink)
 

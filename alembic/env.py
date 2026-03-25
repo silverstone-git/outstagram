@@ -1,7 +1,12 @@
 from logging.config import fileConfig
 from os import getenv
+import os
 import sys
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Add the project root to the Python path
 sys.path.append(str(Path(__file__).resolve().parents[1]))
@@ -13,7 +18,8 @@ from alembic import context
 from sqlmodel import SQLModel
 
 from lib.models import (
-    FollowRequest, FollowRequestStatus, Friendship, MediaURL, Post, PostCategory, PostComment, PostLike, User, Exam
+    FollowRequest, FollowRequestStatus, Friendship, MediaURL, Post, PostCategory, PostComment, PostLike, User, Exam,
+    Topic, Question, ExamSection, SectionQuestionLink, QuestionType
 )
 
 target_metadata = SQLModel.metadata
@@ -29,9 +35,9 @@ if config.config_file_name is not None:
 
 # Set the database URL from environment variables
 DB_USERNAME = getenv("OUTSTAGRAM_USERNAME", "")
-DB_PASSWORD = getenv("OUTSTAGRAM_PASSWORD", "")
-DB_NAME = getenv("OUTSTAGRAM_DBNAME", "outsie")
-DB_HOST = getenv("OUTSTAGRAM_DBHOST", "localhost")
+DB_PASSWORD = os.getenv("OUTSTAGRAM_PASSWORD", "")
+DB_NAME = os.getenv("OUTSTAGRAM_DBNAME", "outsie")
+DB_HOST = os.getenv("OUTSTAGRAM_DBHOST", "localhost")
 DATABASE_URL = f"postgresql://{DB_USERNAME}:{DB_PASSWORD}@{DB_HOST}/{DB_NAME}?sslmode=require"
 config.set_main_option('sqlalchemy.url', DATABASE_URL)
 

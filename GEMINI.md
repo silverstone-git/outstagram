@@ -91,33 +91,36 @@ The project is organized into the following key directories:
     - The `get_user_posts_repo` function in `src/repository/users.py` retrieves a paginated list of posts for a specific user.
     - This was recently refactored to improve performance and code quality. Instead of aggregating media URLs into a comma-separated string and parsing it in Python, the query now uses PostgreSQL's `jsonb_agg` and `json_build_object` functions. This allows the API to directly return a structured list of media objects (`{url, media_type}`), making the process more efficient and robust.
 
-### 4.5. Exams
+### 4.5. Exams and Question Bank (Architectural Rewrite)
 
-1.  **Creating an Exam (`/pariksha`):**
-    - The `POST /pariksha` endpoint allows users to submit exam results.
-    - It accepts an `exam_title` and `exam_json_str` in the request body.
-    - A new `Exam` object is created with a unique `exam_id` (UUID) and saved to the database.
-2.  **Retrieving Exams:**
-    - `GET /pariksha`: Returns a paginated list of all exams. The `page` query parameter can be used to navigate through pages (e.g., `/pariksha?page=2`). This endpoint returns a summary of each exam, excluding the detailed `exam_json_str`.
-    - `GET /pariksha/{exam_id}`: Returns a specific exam by its ID, including the `exam_json_str`.
+1.  **Question Bank API:**
+    - A centralized repository for questions managed through the `/api/question_bank/*` endpoints.
+    - `GET /api/question_bank/topics`: Fetch available topics and question counts.
+    - `GET /api/question_bank/sample?topic={slug}&count={n}`: Sample random questions server-side for preset generation.
+    - `POST /api/question_bank/topics/{slug}`: Append new questions. Protected by an `PARIKSHA_ADMIN_SECRET` bearer token.
+2.  **Creating a Structured Exam (`/pariksha`):**
+    - The engine transitioned from a simple JSON string to a structured format supporting complex simulations (e.g., GATE, CSIR NET).
+    - Exams are composed of multiple `ExamSection`s, each featuring a customizable `marking` scheme (positive/negative) and `max_attempts`.
+    - Questions support multiple formats: `MCQ`, `MSQ`, and `NAT`, along with specific answer validation types (`answer_labels`, `answer_range`, `answer_value`).
+    - The legacy `exam_json_str` is maintained for backward compatibility.
+3.  **Retrieving Exams:**
+    - `GET /pariksha`: Returns a paginated list of all exams (summaries only).
+    - `GET /pariksha/{exam_id}`: Returns the full structured exam, including all sections and their linked questions.
 
 ### 4.6. Data Models and Schemas
 
-- **`lib/models.py`:** Defines the SQLAlchemy models for `User`, `Post`, `PostComment`, `PostLike`, `MediaURL`, `FollowRequest`, `Friendship`, and `Exam`. These models map to the database tables. The `MediaURL` model now includes a `media_type` field to store the type of media (e.g., 'image', 'video').
-- **`lib/schemas.py`:** Defines the Pantic schemas used for API request and response validation. This ensures that the data exchanged with the API conforms to the expected structure. This includes schemas like `UserSchema`, `PostSchema`, and `ExamSchema`. To fix a validation issue during post creation, a `MediaURLCreateSchema` was introduced, which omits the `post_id`. The `PostCreate` schema now uses this new schema for its `media_urls` field.
+- **`lib/models.py`:** Defines the SQLAlchemy models including the newly added `Topic`, `Question`, `ExamSection`, and `SectionQuestionLink`. The `Question` model employs native `JSON` columns for handling complex `options` and `answer_range`.
+- **`lib/schemas.py`:** Includes Pydantic schemas validating these deeply nested structures like `ExamSectionCreate` with nested `Marking` components.
 
 ## 5. Database
 
 The `outstagram.sql` file contains the PostgreSQL database schema. The database uses a schema named `outsie`. The tables include:
 
-- `user`: Stores user information.
-- `post`: Stores post details.
-- `postcomment`: Stores comments on posts.
-- `postlike`: Stores likes on posts.
-- `mediaurl`: Stores URLs and media types for media associated with posts.
-- `followrequest`: Manages follow requests between users.
-- `friendship`: Represents the follower/following relationship.
-- `exam`: Stores exam information, including a title and a JSON string with exam details.
+- `user`, `post`, `postcomment`, `postlike`, `mediaurl`, `followrequest`, `friendship`, `exam`
+- `examsection`: Stores properties like positive/negative marking rules and attempts.
+- `topic`: Centralized tags for the Question Bank.
+- `question`: Detailed entity representing multiple question structures.
+- `sectionquestionlink`: Linking entity between sections and questions.
 
 Alembic is used for managing database schema migrations, as seen in the `alembic/` directory.
 
@@ -138,7 +141,7 @@ This section documents some of the challenges and solutions encountered during t
 
 The process of adding and modifying tables involved several steps and troubleshooting.
 
-1.  **Initial Setup:** The project was missing an `alembic.ini` file. A new one was created, but it couldn't expand environment variables for the `sqlalchemy.url`. The solution was to modify `alembic/env.py` to read the environment variables and programmatically set the database URL.
+1.  **Initial Setup:** The project was missing an `alembic.ini` file. A new one was created, but it couldn't expand environment variables for the `sqlalchemy.url`. The solution was to modify `alembic/env.py` to read the environment variables and programmatically set the database URL. This was further improved by importing `python-dotenv` to directly load variables from `.env` files.
 
 2.  **`ModuleNotFoundError`:** The `alembic` command initially failed because it couldn't find the `lib` module. This was resolved by adding the project's root directory to the Python path at the beginning of `alembic/env.py`:
     ```python
@@ -154,10 +157,13 @@ The process of adding and modifying tables involved several steps and troublesho
         ```python
         op.add_column('exam', sa.Column('exam_title', sqlmodel.sql.sqltypes.AutoString(), nullable=False, server_default='default_title'))
         ```
-    - Similarly, when adding the non-nullable `media_type` column to the `mediaurl` table, the migration failed because existing rows would have null values. A `server_default` of `'image'` was added to handle existing records:
-        ```python
-        op.add_column('mediaurl', sa.Column('media_type', sqlmodel.sql.sqltypes.AutoString(), nullable=False, server_default='image'))
-        ```
+    - Similarly, when adding the non-nullable `media_type` column to the `mediaurl` table, the migration failed because existing rows would have null values. A `server_default` of `'image'` was added to handle existing records.
+
+5.  **`DependentObjectsStillExist`:** When renaming columns referenced by a Foreign Key (e.g. `section_id` to `id`), Postgres enforces referential integrity. Alembic might incorrectly drop the column before dropping the constraint. This requires manual reordering of operations in the generated `upgrade()` script:
+    - First, `op.drop_constraint(...)` on the linking table.
+    - Second, drop the primary key constraint on the main table.
+    - Then, `op.drop_column(...)` and `op.add_column(...)`.
+    - Finally, recreate the foreign key constraint.
 
 **Correct Migration Process:**
 

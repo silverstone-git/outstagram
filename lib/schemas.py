@@ -5,7 +5,8 @@ from typing import List, Optional
 from pydantic import BaseModel, EmailStr
 
 from .models import (
-    FollowRequest, FollowRequestStatus, Friendship, MediaURL, Post, PostCategory, PostComment, PostLike, User, Exam
+    FollowRequest, FollowRequestStatus, Friendship, MediaURL, Post, PostCategory, PostComment, PostLike, User, Exam,
+    Topic, Question, ExamSection, QuestionType
 )
 
 
@@ -153,15 +154,69 @@ class PostCommentUpdateSchema(BaseModel):
     content: Optional[str]
 
 
+class TopicPublic(BaseModel):
+    name: str
+    slug: str
+    count: int
+
+
+class QuestionPublic(BaseModel):
+    id: str
+    type: QuestionType
+    question: str
+    options: Optional[List[dict]] = None
+    answer_label: Optional[int] = None
+    answer_labels: Optional[List[int]] = None
+    answer_range: Optional[dict] = None
+    answer_value: Optional[str] = None
+    topic: str
+    explanation: str
+    image_path: Optional[str] = None
+
+
+class QuestionCreate(BaseModel):
+    type: QuestionType
+    question: str
+    options: Optional[List[dict]] = None
+    answer_label: Optional[int] = None
+    answer_labels: Optional[List[int]] = None
+    answer_range: Optional[dict] = None
+    answer_value: Optional[str] = None
+    explanation: str
+    image_path: Optional[str] = None
+
+
+class Marking(BaseModel):
+    positive: float
+    negative: float
+
+
+class ExamSectionPublic(BaseModel):
+    id: str
+    name: str
+    marking: Marking
+    max_attempts: Optional[int] = None
+    questions: List[QuestionPublic]
+
+
+class ExamSectionCreate(BaseModel):
+    name: str
+    questions: List[str] # List of question IDs
+    marking: Marking
+    max_attempts: Optional[int] = None
+
+
 class ExamCreate(BaseModel):
     exam_title: str
     exam_json_str: str
+    sections: Optional[List[ExamSectionCreate]] = None
 
 
 class ExamPublic(BaseModel):
     exam_id: str
     exam_title: str
     exam_json_str: str
+    sections: List[ExamSectionPublic]
 
 
 class ExamPublicList(BaseModel):

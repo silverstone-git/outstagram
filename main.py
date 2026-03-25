@@ -3,18 +3,24 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from .lib.database_connection import SessionLocal, engine
-from .lib.schemas import UserSchema, PostSchema, PostCommentSchema, UserPublic, PostPublic, PostCreate, CommentCreate, PostLikeUseful, FollowRequestUseful, UserProfileSchema, ExamCreate, ExamPublic, ExamPublicList
-from .lib.models import PostLike, User, Post, PostComment, PostCategory, Friendship, Exam
+from .lib.schemas import (
+    UserSchema, PostSchema, PostCommentSchema, UserPublic, PostPublic, PostCreate, CommentCreate, 
+    PostLikeUseful, FollowRequestUseful, UserProfileSchema, ExamCreate, ExamPublic, ExamPublicList,
+    TopicPublic, QuestionPublic, QuestionCreate
+)
+from .lib.models import PostLike, User, Post, PostComment, PostCategory, Friendship, Exam, Topic, Question, ExamSection
 from .src.repository.auth import create_user, authenticate_user, create_access_token, authorize
 from .src.repository.posts import create_post, get_post, update_post, delete_post, like_post_repo, unlike_post_repo, get_likes, get_feed_repo
 from .src.repository.comments import add_comment_repo, get_comments
 from .src.repository.users import get_dashboard, get_user_posts_repo, get_user_profile_repo
 from .src.repository.frienship import send_follow_request, request_approve_repo, get_follow_requests
-from .src.repository.exams import get_all_exams_paginated
+from .src.repository.exams import get_all_exams_paginated, create_exam_repo, get_exam_full_repo
 from .src.repository.media import upload_media_to_s3, upload_media_bulk_to_s3
+from .src.repository.question_bank import get_topics_with_stats, sample_questions_from_topic, add_questions_to_topic
 from typing import List, Optional, Annotated
 from uuid import uuid4
 from os import getenv
+from fastapi import Header
 
 from sqlmodel import SQLModel
 
@@ -243,13 +249,29 @@ async def get_feed(
     return get_feed_repo(page=page, category=category, current_user=current_user, db=db)
 
 
+@app.get("/api/question_bank/topics", response_model=List[TopicPublic])
+async def get_topics(db: Session = Depends(get_db)):
+    return get_topics_with_stats(db)
+
+
+@app.get("/api/question_bank/sample", response_model=List[QuestionPublic])
+async def get_sample_questions(topic: str, count: int = 10, db: Session = Depends(get_db)):
+    return sample_questions_from_topic(db, topic, count)
+
+
+@app.post("/api/question_bank/topics/{slug}")
+async def post_questions(slug: str, questions: List[QuestionCreate], db: Session = Depends(get_db), authorization: str = Header(None)):
+    admin_secret = getenv("PARIKSHA_ADMIN_SECRET", "super_secret_default")
+    if not admin_secret or authorization != f"Bearer {admin_secret}":
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid admin secret")
+    return add_questions_to_topic(db, slug, questions)
+
+
 @app.post("/pariksha", response_model=ExamPublic, status_code=status.HTTP_201_CREATED)
 async def create_exam(exam_data: ExamCreate, db: Session = Depends(get_db)):
-    new_exam = Exam(exam_id=str(uuid4()), exam_title=exam_data.exam_title, exam_json_str=exam_data.exam_json_str)
-    db.add(new_exam)
-    db.commit()
-    db.refresh(new_exam)
-    return new_exam
+    exam = create_exam_repo(db=db, exam_data=exam_data)
+    # Re-fetch full to return the correct response_model structure
+    return get_exam_full_repo(db=db, exam_id=exam.exam_id)
 
 
 @app.get("/pariksha", response_model=List[ExamPublicList])
@@ -266,7 +288,7 @@ async def get_all_exams(page: int = 1, db: Session = Depends(get_db)):
 
 @app.get("/pariksha/{exam_id}", response_model=ExamPublic)
 async def get_exam_by_id(exam_id: str, db: Session = Depends(get_db)):
-    exam = db.query(Exam).filter(Exam.exam_id == exam_id).first()
+    exam = get_exam_full_repo(db=db, exam_id=exam_id)
     if not exam:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Exam not found")
     return exam

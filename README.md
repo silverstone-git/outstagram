@@ -29,6 +29,7 @@ Install using `pip install -r requirements.txt`
 
 ### Run-time, variable, JWT Secret key
 - OUTSTAGRAM_SECRET_KEY
+- PARIKSHA_ADMIN_SECRET
 
 ### For CORS
 - OUTSTAGRAM_ALLOWED_ORIGIN_1
@@ -88,6 +89,10 @@ docker-compose up -d
 - post_comment
 - media_url (url, media_type)
 - exam
+- examsection
+- question
+- topic
+- sectionquestionlink
 
 
 
@@ -271,15 +276,26 @@ curl "http://localhost:8000/feed?page={PAGE_NUMBER}&category={YOUR_POST_CATEGORY
 
 ```
 
-- for creating an exam
+- for creating an exam (structured with sections)
 
 ```bash
 curl -X POST \
   -H "Content-Type: application/json" \
-  -d 
+  -d \
   '{
-    "exam_title": "YOUR_EXAM_TITLE",
-    "exam_json_str": "{\"subject\": \"Maths\", \"marks\": 100}"
+    "exam_title": "Physics GATE 2026",
+    "exam_json_str": "{\"legacy_support\": true}",
+    "sections": [
+      {
+        "name": "Quantum Mechanics",
+        "questions": ["uuid-of-a-question"],
+        "marking": {
+          "positive": 2.0,
+          "negative": 0.66
+        },
+        "max_attempts": 10
+      }
+    ]
   }' \
   http://localhost:8000/pariksha
 ```
@@ -290,10 +306,41 @@ curl -X POST \
 curl http://localhost:8000/pariksha?page=1
 ```
 
-**Note:** The `/pariksha` endpoint is paginated, sorted by upload date (latest first), and returns a list of exams without the `exam_json_str` field. To get the full exam details, use the endpoint below.
+**Note:** The `/pariksha` endpoint is paginated, sorted by upload date (latest first), and returns a list of exams without the `exam_json_str` or `sections` fields. To get the full exam details, use the endpoint below.
 
 - for getting a specific exam
 
 ```bash
 curl http://localhost:8000/pariksha/{YOUR_EXAM_ID}
+```
+
+- for fetching topics from the question bank
+
+```bash
+curl http://localhost:8000/api/question_bank/topics
+```
+
+- for sampling random questions from a topic
+
+```bash
+curl "http://localhost:8000/api/question_bank/sample?topic=quantum_mechanics&count=10"
+```
+
+- for adding questions to a topic
+
+```bash
+curl -X POST \
+  http://localhost:8000/api/question_bank/topics/quantum_mechanics \
+  -H "Authorization: Bearer PARIKSHA_ADMIN_SECRET" \
+  -H "Content-Type: application/json" \
+  -d \
+  '[
+    {
+      "type": "MCQ",
+      "question": "What is the commutator $[x, p]$?",
+      "options": [{"label": 1, "value": "$i\\hbar$"}, {"label": 2, "value": "$0$"}],
+      "answer_label": 1,
+      "explanation": "Fundamental commutation relation"
+    }
+  ]'
 ```

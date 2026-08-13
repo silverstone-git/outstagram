@@ -16,7 +16,7 @@ from .src.repository.users import get_dashboard, get_user_posts_repo, get_user_p
 from .src.repository.frienship import send_follow_request, request_approve_repo, get_follow_requests
 from .src.repository.exams import get_all_exams_paginated, create_exam_repo, get_exam_full_repo
 from .src.repository.media import upload_media_to_s3, upload_media_bulk_to_s3
-from .src.repository.question_bank import get_topics_with_stats, sample_questions_from_topic, add_questions_to_topic
+from .src.repository.question_bank import get_topics_with_stats, sample_questions_from_topic, add_unique_questions_to_topic, delete_questions_from_topic
 from typing import List, Optional, Annotated
 from uuid import uuid4
 from os import getenv
@@ -264,7 +264,26 @@ async def post_questions(slug: str, questions: List[QuestionCreate], db: Session
     admin_secret = getenv("PARIKSHA_ADMIN_SECRET", "super_secret_default")
     if not admin_secret or authorization != f"Bearer {admin_secret}":
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid admin secret")
+    # This remains the original, appending behavior
+    from .src.repository.question_bank import add_questions_to_topic
     return add_questions_to_topic(db, slug, questions)
+
+
+@app.patch("/api/question_bank/topics/{slug}")
+async def patch_questions(slug: str, questions: List[QuestionCreate], db: Session = Depends(get_db), authorization: str = Header(None)):
+    admin_secret = getenv("PARIKSHA_ADMIN_SECRET", "super_secret_default")
+    if not admin_secret or authorization != f"Bearer {admin_secret}":
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid admin secret")
+    # This is the new idempotent, unique-adding behavior
+    return add_unique_questions_to_topic(db, slug, questions)
+
+
+@app.delete("/api/question_bank/topics/{slug}")
+async def delete_questions(slug: str, db: Session = Depends(get_db), authorization: str = Header(None)):
+    admin_secret = getenv("PARIKSHA_ADMIN_SECRET", "super_secret_default")
+    if not admin_secret or authorization != f"Bearer {admin_secret}":
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid admin secret")
+    return delete_questions_from_topic(db, slug)
 
 
 @app.post("/pariksha", response_model=ExamPublic, status_code=status.HTTP_201_CREATED)

@@ -97,7 +97,9 @@ The project is organized into the following key directories:
     - A centralized repository for questions managed through the `/api/question_bank/*` endpoints.
     - `GET /api/question_bank/topics`: Fetch available topics and question counts.
     - `GET /api/question_bank/sample?topic={slug}&count={n}`: Sample random questions server-side for preset generation.
-    - `POST /api/question_bank/topics/{slug}`: Append new questions. Protected by an `PARIKSHA_ADMIN_SECRET` bearer token.
+    - `POST /api/question_bank/topics/{slug}`: Append new questions (may create duplicates). Protected by an `PARIKSHA_ADMIN_SECRET` bearer token.
+    - `PATCH /api/question_bank/topics/{slug}`: Append unique questions only (idempotent). Protected by an `PARIKSHA_ADMIN_SECRET` bearer token.
+    - `DELETE /api/question_bank/topics/{slug}`: Clear all questions for a topic. Protected by an `PARIKSHA_ADMIN_SECRET` bearer token.
 2.  **Creating a Structured Exam (`/pariksha`):**
     - The engine transitioned from a simple JSON string to a structured format supporting complex simulations (e.g., GATE, CSIR NET).
     - Exams are composed of multiple `ExamSection`s, each featuring a customizable `marking` scheme (positive/negative) and `max_attempts`.

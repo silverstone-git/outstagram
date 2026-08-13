@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import func
-from ...lib.models import Topic, Question, QuestionType
+from ...lib.models import Topic, Question, QuestionType, SectionQuestionLink
 from ...lib.schemas import QuestionCreate, TopicPublic, QuestionPublic
 from typing import List
 import random
@@ -71,3 +71,66 @@ def add_questions_to_topic(db: Session, topic_slug: str, questions: List[Questio
     total_count = db.query(func.count(Question.id)).filter(Question.topic_id == topic.topic_id).scalar()
     
     return {"success": True, "added": added_count, "total": total_count}
+
+def add_unique_questions_to_topic(db: Session, topic_slug: str, questions: List[QuestionCreate]) -> dict:
+    topic = db.query(Topic).filter(Topic.slug == topic_slug).first()
+    if not topic:
+        topic = Topic(name=topic_slug.replace("_", " ").title(), slug=topic_slug)
+        db.add(topic)
+        db.commit()
+        db.refresh(topic)
+    
+    # Get existing question texts for this topic to check for duplicates
+    existing_questions = db.query(Question.question).filter(Question.topic_id == topic.topic_id).all()
+    existing_question_texts = {q[0] for q in existing_questions}
+    
+    added_count = 0
+    for q_data in questions:
+        # Check if the question text already exists in this topic
+        if q_data.question in existing_question_texts:
+            continue
+            
+        new_q = Question(
+            id=str(uuid4()),
+            type=q_data.type,
+            question=q_data.question,
+            options=q_data.options,
+            answer_label=q_data.answer_label,
+            answer_labels=q_data.answer_labels,
+            answer_range=q_data.answer_range,
+            answer_value=q_data.answer_value,
+            topic_id=topic.topic_id,
+            explanation=q_data.explanation,
+            image_path=q_data.image_path
+        )
+        db.add(new_q)
+        existing_question_texts.add(q_data.question) # Update set to avoid duplicates in the same batch
+        added_count += 1
+    
+    db.commit()
+    
+    total_count = db.query(func.count(Question.id)).filter(Question.topic_id == topic.topic_id).scalar()
+    
+    return {"success": True, "added": added_count, "total": total_count}
+
+def delete_questions_from_topic(db: Session, topic_slug: str) -> dict:
+    topic = db.query(Topic).filter(Topic.slug == topic_slug).first()
+    if not topic:
+        return {"success": False, "detail": "Topic not found"}
+    
+    # Find all question IDs for this topic
+    questions = db.query(Question).filter(Question.topic_id == topic.topic_id).all()
+    question_ids = [q.id for q in questions]
+    
+    if not question_ids:
+        return {"success": True, "deleted": 0}
+        
+    # Delete links to exam sections
+    db.query(SectionQuestionLink).filter(SectionQuestionLink.question_id.in_(question_ids)).delete(synchronize_session=False)
+    
+    # Delete the questions
+    deleted_count = db.query(Question).filter(Question.topic_id == topic.topic_id).delete(synchronize_session=False)
+    
+    db.commit()
+    
+    return {"success": True, "deleted": deleted_count}

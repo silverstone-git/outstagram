@@ -16,8 +16,8 @@ from .src.repository.users import get_dashboard, get_user_posts_repo, get_user_p
 from .src.repository.frienship import send_follow_request, request_approve_repo, get_follow_requests
 from .src.repository.exams import get_all_exams_paginated, create_exam_repo, get_exam_full_repo
 from .src.repository.media import upload_media_to_s3, upload_media_bulk_to_s3
-from .src.repository.question_bank import get_topics_with_stats, sample_questions_from_topic, add_unique_questions_to_topic, delete_questions_from_topic
-from typing import List, Optional, Annotated
+from .src.repository.question_bank import get_topics_with_stats, sample_questions_from_topic, add_unique_questions_to_topic, delete_questions_from_topic, get_grouped_topics
+from typing import List, Optional, Annotated, Dict
 from uuid import uuid4
 from os import getenv
 from fastapi import Header
@@ -249,14 +249,36 @@ async def get_feed(
     return get_feed_repo(page=page, category=category, current_user=current_user, db=db)
 
 
-@app.get("/api/question_bank/topics", response_model=List[TopicPublic])
-async def get_topics(db: Session = Depends(get_db)):
+@app.get("/api/question_bank/topics", response_model=Dict[str, List[str]] | List[TopicPublic])
+async def get_topics(group: Optional[str] = None, db: Session = Depends(get_db)):
+    if group:
+        return get_grouped_topics(db, group)
     return get_topics_with_stats(db)
 
 
 @app.get("/api/question_bank/sample", response_model=List[QuestionPublic])
-async def get_sample_questions(topic: str, count: int = 10, db: Session = Depends(get_db)):
-    return sample_questions_from_topic(db, topic, count)
+async def get_sample_questions(
+    topic: str, 
+    count: int = 10, 
+    difficulty_proportions: Optional[str] = Query(None, description="Comma separated difficulty proportions (e.g. 2,1,1 for easy,medium,hard)"),
+    db: Session = Depends(get_db)
+):
+    easy_count, medium_count, hard_count = 0, 0, 0
+    if difficulty_proportions:
+        try:
+            parts = [int(p) for p in difficulty_proportions.split(",")]
+            if len(parts) == 3:
+                total_parts = sum(parts)
+                if total_parts > 0:
+                    easy_count = int(count * parts[0] / total_parts)
+                    medium_count = int(count * parts[1] / total_parts)
+                    hard_count = count - easy_count - medium_count
+            else:
+                raise HTTPException(status_code=400, detail="difficulty_proportions must contain exactly 3 integers (easy,medium,hard)")
+        except ValueError:
+            raise HTTPException(status_code=400, detail="difficulty_proportions must be comma-separated integers")
+            
+    return sample_questions_from_topic(db, topic, count, easy_count, medium_count, hard_count)
 
 
 @app.post("/api/question_bank/topics/{slug}")

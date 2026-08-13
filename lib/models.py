@@ -186,11 +186,29 @@ class QuestionType(str, Enum):
     NAT = "NAT"
 
 
+class Difficulty(str, Enum):
+    easy = "easy"
+    medium = "medium"
+    hard = "hard"
+
+
+class TopicGroupLink(SQLModel, table=True):
+    topic_id: int = Field(foreign_key="topic.topic_id", primary_key=True)
+    group_id: int = Field(foreign_key="topicgroup.group_id", primary_key=True)
+
+
+class TopicGroup(SQLModel, table=True):
+    group_id: Optional[int] = Field(default=None, primary_key=True)
+    name: str = Field(nullable=False, unique=True)
+    topics: List["Topic"] = Relationship(back_populates="groups", link_model=TopicGroupLink)
+
+
 class Topic(SQLModel, table=True):
     topic_id: Optional[int] = Field(default=None, primary_key=True)
     name: str = Field(nullable=False)
     slug: str = Field(nullable=False, unique=True, index=True)
     questions: List["Question"] = Relationship(back_populates="topic")
+    groups: List["TopicGroup"] = Relationship(back_populates="topics", link_model=TopicGroupLink)
 
 
 class SectionQuestionLink(SQLModel, table=True):
@@ -201,6 +219,7 @@ class SectionQuestionLink(SQLModel, table=True):
 class Question(SQLModel, table=True):
     id: str = Field(primary_key=True)
     type: QuestionType = Field(nullable=False)
+    difficulty: Difficulty = Field(default=Difficulty.medium, nullable=False)
     question: str = Field(nullable=False)
     # Options will be a JSON array of dicts: [{label: int, value: str}]
     options: Optional[List[dict]] = Field(default=None, sa_column=Column(JSON))

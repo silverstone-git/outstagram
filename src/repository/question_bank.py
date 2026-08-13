@@ -1,10 +1,33 @@
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import func
-from ...lib.models import Topic, Question, QuestionType, SectionQuestionLink
+from ...lib.models import Topic, Question, QuestionType, SectionQuestionLink, TopicGroup
 from ...lib.schemas import QuestionCreate, TopicPublic, QuestionPublic
-from typing import List
+from typing import List, Dict
 import random
 from uuid import uuid4
+
+def get_grouped_topics(db: Session, group_name: str = None) -> Dict[str, List[str]]:
+    query = db.query(TopicGroup)
+    if group_name:
+        query = query.filter(TopicGroup.name == group_name)
+    groups = query.all()
+    
+    result = {}
+    for group in groups:
+        result[group.name] = [topic.name for topic in group.topics]
+    return result
+
+def assign_topic_to_group(db: Session, topic_slug: str, group_name: str):
+    topic = db.query(Topic).filter(Topic.slug == topic_slug).first()
+    group = db.query(TopicGroup).filter(TopicGroup.name == group_name).first()
+    if not group:
+        group = TopicGroup(name=group_name)
+        db.add(group)
+        db.commit()
+        db.refresh(group)
+    if topic and group not in topic.groups:
+        topic.groups.append(group)
+        db.commit()
 
 def get_topics_with_stats(db: Session) -> List[TopicPublic]:
     results = db.query(
@@ -15,18 +38,33 @@ def get_topics_with_stats(db: Session) -> List[TopicPublic]:
     
     return [TopicPublic(name=r.name, slug=r.slug, count=r.count) for r in results]
 
-def sample_questions_from_topic(db: Session, topic_slug: str, count: int) -> List[QuestionPublic]:
+def sample_questions_from_topic(db: Session, topic_slug: str, count: int, easy_count: int = 0, medium_count: int = 0, hard_count: int = 0) -> List[QuestionPublic]:
     topic = db.query(Topic).filter(Topic.slug == topic_slug).first()
     if not topic:
         return []
-    
-    # func.random() works for PostgreSQL
-    questions = db.query(Question).filter(Question.topic_id == topic.topic_id).order_by(func.random()).limit(count).all()
+
+    sampled_questions = []
+
+    # If specific counts are provided, use them for weighted sampling
+    if easy_count > 0 or medium_count > 0 or hard_count > 0:
+        if easy_count > 0:
+            questions = db.query(Question).filter(Question.topic_id == topic.topic_id, Question.difficulty == 'easy').order_by(func.random()).limit(easy_count).all()
+            sampled_questions.extend(questions)
+        if medium_count > 0:
+            questions = db.query(Question).filter(Question.topic_id == topic.topic_id, Question.difficulty == 'medium').order_by(func.random()).limit(medium_count).all()
+            sampled_questions.extend(questions)
+        if hard_count > 0:
+            questions = db.query(Question).filter(Question.topic_id == topic.topic_id, Question.difficulty == 'hard').order_by(func.random()).limit(hard_count).all()
+            sampled_questions.extend(questions)
+    else:
+        # Fallback to random sampling if no specific counts are provided
+        sampled_questions = db.query(Question).filter(Question.topic_id == topic.topic_id).order_by(func.random()).limit(count).all()
     
     return [
         QuestionPublic(
             id=q.id,
             type=q.type,
+            difficulty=q.difficulty,
             question=q.question,
             options=q.options,
             answer_label=q.answer_label,
@@ -36,7 +74,7 @@ def sample_questions_from_topic(db: Session, topic_slug: str, count: int) -> Lis
             topic=topic.name,
             explanation=q.explanation,
             image_path=q.image_path
-        ) for q in questions
+        ) for q in sampled_questions
     ]
 
 def add_questions_to_topic(db: Session, topic_slug: str, questions: List[QuestionCreate]) -> dict:
@@ -53,6 +91,7 @@ def add_questions_to_topic(db: Session, topic_slug: str, questions: List[Questio
         new_q = Question(
             id=str(uuid4()),
             type=q_data.type,
+            difficulty=q_data.difficulty,
             question=q_data.question,
             options=q_data.options,
             answer_label=q_data.answer_label,
@@ -93,6 +132,7 @@ def add_unique_questions_to_topic(db: Session, topic_slug: str, questions: List[
         new_q = Question(
             id=str(uuid4()),
             type=q_data.type,
+            difficulty=q_data.difficulty,
             question=q_data.question,
             options=q_data.options,
             answer_label=q_data.answer_label,

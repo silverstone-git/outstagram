@@ -6,7 +6,7 @@ from pydantic import BaseModel, EmailStr
 
 from .models import (
     FollowRequest, FollowRequestStatus, Friendship, MediaURL, Post, PostCategory, PostComment, PostLike, User, Exam,
-    Topic, Question, ExamSection, QuestionType
+    Topic, Question, ExamSection, QuestionType, Difficulty
 )
 
 
@@ -163,6 +163,7 @@ class TopicPublic(BaseModel):
 class QuestionPublic(BaseModel):
     id: str
     type: QuestionType
+    difficulty: Difficulty
     question: str
     options: Optional[List[dict]] = None
     answer_label: Optional[int] = None
@@ -176,6 +177,7 @@ class QuestionPublic(BaseModel):
 
 class QuestionCreate(BaseModel):
     type: QuestionType
+    difficulty: Difficulty = Difficulty.medium
     question: str
     options: Optional[List[dict]] = None
     answer_label: Optional[int] = None

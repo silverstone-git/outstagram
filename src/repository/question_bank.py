@@ -6,6 +6,10 @@ from typing import List, Dict
 import random
 from uuid import uuid4
 
+def get_all_groups(db: Session) -> List[str]:
+    groups = db.query(TopicGroup).all()
+    return [group.name for group in groups]
+
 def get_grouped_topics(db: Session, group_name: str = None) -> Dict[str, List[str]]:
     query = db.query(TopicGroup)
     if group_name:

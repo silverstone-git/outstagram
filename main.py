@@ -16,7 +16,7 @@ from .src.repository.users import get_dashboard, get_user_posts_repo, get_user_p
 from .src.repository.frienship import send_follow_request, request_approve_repo, get_follow_requests
 from .src.repository.exams import get_all_exams_paginated, create_exam_repo, get_exam_full_repo
 from .src.repository.media import upload_media_to_s3, upload_media_bulk_to_s3
-from .src.repository.question_bank import get_topics_with_stats, sample_questions_from_topic, add_unique_questions_to_topic, delete_questions_from_topic, get_grouped_topics
+from .src.repository.question_bank import get_topics_with_stats, sample_questions_from_topic, add_unique_questions_to_topic, delete_questions_from_topic, get_grouped_topics, get_all_groups
 from typing import List, Optional, Annotated, Dict
 from uuid import uuid4
 from os import getenv
@@ -247,6 +247,11 @@ async def get_feed(
 ):
 
     return get_feed_repo(page=page, category=category, current_user=current_user, db=db)
+
+
+@app.get("/api/question_bank/groups", response_model=List[str])
+async def get_groups(db: Session = Depends(get_db)):
+    return get_all_groups(db)
 
 
 @app.get("/api/question_bank/topics", response_model=Dict[str, List[str]] | List[TopicPublic])

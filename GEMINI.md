@@ -95,15 +95,16 @@ The project is organized into the following key directories:
 
 1.  **Question Bank API:**
     - A centralized repository for questions managed through the `/api/question_bank/*` endpoints.
-    - `GET /api/question_bank/topics`: Fetch available topics and question counts.
-    - `GET /api/question_bank/sample?topic={slug}&count={n}`: Sample random questions server-side for preset generation.
+    - `GET /api/question_bank/topics`: Fetch available topics and question counts. Supports optional `?group=<group_name>` to return topics structured by group.
+    - `GET /api/question_bank/groups`: Fetch all available topic groups.
+    - `GET /api/question_bank/sample`: Sample random questions server-side for preset generation. Supports weighted sampling by difficulty using `?topic=<slug>&count=<n>&proportions=<easy,medium,hard>`.
     - `POST /api/question_bank/topics/{slug}`: Append new questions (may create duplicates). Protected by an `PARIKSHA_ADMIN_SECRET` bearer token.
     - `PATCH /api/question_bank/topics/{slug}`: Append unique questions only (idempotent). Protected by an `PARIKSHA_ADMIN_SECRET` bearer token.
     - `DELETE /api/question_bank/topics/{slug}`: Clear all questions for a topic. Protected by an `PARIKSHA_ADMIN_SECRET` bearer token.
 2.  **Creating a Structured Exam (`/pariksha`):**
     - The engine transitioned from a simple JSON string to a structured format supporting complex simulations (e.g., GATE, CSIR NET).
     - Exams are composed of multiple `ExamSection`s, each featuring a customizable `marking` scheme (positive/negative) and `max_attempts`.
-    - Questions support multiple formats: `MCQ`, `MSQ`, and `NAT`, along with specific answer validation types (`answer_labels`, `answer_range`, `answer_value`).
+    - Questions support multiple formats: `MCQ`, `MSQ`, and `NAT`, along with specific answer validation types (`answer_labels`, `answer_range`, `answer_value`) and a `difficulty` level ('easy', 'medium', 'hard').
     - The legacy `exam_json_str` is maintained for backward compatibility.
 3.  **Retrieving Exams:**
     - `GET /pariksha`: Returns a paginated list of all exams (summaries only).

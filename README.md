@@ -314,17 +314,14 @@ curl http://localhost:8000/pariksha?page=1
 curl http://localhost:8000/pariksha/{YOUR_EXAM_ID}
 ```
 
-- for fetching topics from the question bank
+### Question Bank API
 
-```bash
-curl http://localhost:8000/api/question_bank/topics
-```
-
-- for sampling random questions from a topic
-
-```bash
-curl "http://localhost:8000/api/question_bank/sample?topic=quantum_mechanics&count=10"
-```
+- `GET /api/question_bank/topics`: Fetch available topics. Supports optional `?group=<group_name>` to return topics structured by group.
+- `GET /api/question_bank/groups`: Fetch all available topic groups.
+- `GET /api/question_bank/sample?topic=<slug>&count=<n>&proportions=<easy,medium,hard>`: Sample random questions server-side, with optional weighted sampling based on difficulty proportions.
+- `POST /api/question_bank/topics/{slug}`: Append new questions (may create duplicates). Protected by an `PARIKSHA_ADMIN_SECRET` bearer token.
+- `PATCH /api/question_bank/topics/{slug}`: Append unique questions only (idempotent). Protected by an `PARIKSHA_ADMIN_SECRET` bearer token.
+- `DELETE /api/question_bank/topics/{slug}`: Clear all questions for a topic. Protected by an `PARIKSHA_ADMIN_SECRET` bearer token.
 
 - for adding questions to a topic
 
